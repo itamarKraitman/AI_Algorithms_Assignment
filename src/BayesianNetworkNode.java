@@ -3,6 +3,7 @@ import java.util.HashMap;
 
 public class BayesianNetworkNode {
     /**
+     *
      * Class to create a bayesian network node
      */
 

@@ -18,6 +18,11 @@ import java.util.HashMap;
  */
 public class ReadNetFromXmlFile {
 
+    /**
+     * Reading and parsing Bayesian nodes from XML file.
+     * @param filename XML file name
+     * @return Bayesian network
+     */
     public static HashMap<String, BayesianNetworkNode> readNetFromXml(String filename) {
 
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();

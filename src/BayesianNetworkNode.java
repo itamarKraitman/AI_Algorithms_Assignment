@@ -3,14 +3,13 @@ import java.util.HashMap;
 
 public class BayesianNetworkNode {
     /**
-     *
      * Class to create a bayesian network node
      */
 
     private String name;
     private ArrayList<String> outcome; // T or F
     private ArrayList<BayesianNetworkNode> evidence; // given variables
-    private ArrayList<String> evidenceNames;
+    private ArrayList<String> evidenceNames; // given nodes names, for convenience
     private ArrayList<HashMap<String, String>> cpt; // conditional probability table
     private String[] probabilities; // nodes probabilities
 
@@ -61,8 +60,8 @@ public class BayesianNetworkNode {
             }
             // adding the node truth value and the corresponding probability to the line
             line.put(name, outcome.get(i % outcome.size()));
-            line.put("proba", probabilities[i]);
-            this.cpt.add(line);
+            line.put("prob", probabilities[i]);
+            cpt.add(line);
             i++;
         }
     }

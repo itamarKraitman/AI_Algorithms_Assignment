@@ -8,9 +8,9 @@ public class BayesianNetworkNode {
 
     private String name;
     private ArrayList<String> outcome; // T or F
-    private ArrayList<BayesianNetworkNode> evidence; // given variables
+    private ArrayList<BayesianNetworkNode> evidence = new ArrayList<>(); // given variables
     private ArrayList<String> evidenceNames; // given nodes names, for convenience
-    private ArrayList<HashMap<String, String>> cpt; // conditional probability table
+    private ArrayList<HashMap<String, String>> cpt = new ArrayList<>(); // conditional probability table
     private String[] probabilities; // nodes probabilities
 
     public BayesianNetworkNode(String name, ArrayList<String> outcome, ArrayList<String> evidenceNames, String probabilities) {
@@ -29,13 +29,17 @@ public class BayesianNetworkNode {
         return this.outcome;
     }
 
-    public ArrayList<String> getEvidence() {
+    public ArrayList<String> getEvidenceNames() {
         return this.evidenceNames;
     }
 
     public String[] getProbabilities() {
         return this.probabilities;
     }
+
+    public ArrayList<BayesianNetworkNode> getEvidences() {return this.evidence;}
+
+    public ArrayList<HashMap<String, String>> getCpt() {return this.cpt;}
 
     /**
      * Creating the CPT of the node, according its probabilities and given nodes

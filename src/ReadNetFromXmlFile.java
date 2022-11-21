@@ -26,7 +26,7 @@ public class ReadNetFromXmlFile {
     public static HashMap<String, BayesianNetworkNode> readNetFromXml(String filename) {
 
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-//        ArrayList<String> names = new ArrayList<>();
+        ArrayList<String> allNodesNames = new ArrayList<>();
         ArrayList<String> outcome = new ArrayList<>();
         ArrayList<String> evidence = new ArrayList<>();
         HashMap<String, BayesianNetworkNode> network = new HashMap<>();
@@ -46,7 +46,8 @@ public class ReadNetFromXmlFile {
                 if (current.getNodeType() == Node.ELEMENT_NODE) {
                     Element element = (Element) current;
                     name = element.getElementsByTagName("NAME").item(0).getTextContent();
-//                    names.add(name); //reading name
+                    allNodesNames.add(name); //reading name
+                    outcome.clear();
                     NodeList outcomeElements = element.getElementsByTagName("OUTCOME");
                     for (int j = 0; j < outcomeElements.getLength(); j++) { // reading outcomes (T and F)
                         outcome.add(outcomeElements.item(j).getTextContent());
@@ -62,18 +63,28 @@ public class ReadNetFromXmlFile {
                     probabilities = element.getElementsByTagName("TABLE").item(0).
                             getTextContent(); //  reading probabilities
                     NodeList given = element.getElementsByTagName("GIVEN");
+                    evidence.clear();
                     for (int k = 0; k < given.getLength(); k++) { // reading evidences
                         evidence.add(given.item(k).getTextContent());
                     }
                 }
                 // creating the node, its cpt, and putting it in the network
                 BayesianNetworkNode currentNode = new BayesianNetworkNode(name, outcome, evidence, probabilities);
-                currentNode.createCpt();
                 network.put(name, currentNode);
             }
 
         } catch (ParserConfigurationException | SAXException | IOException e) {
             e.printStackTrace();
+        }
+
+        // adding all evidence nodes (not only names) to currentNode evidences
+        for (String nodeName : allNodesNames) {
+            BayesianNetworkNode current = network.get(nodeName);
+            for (int i = 0; i < current.getEvidenceNames().size(); i++) {
+                String givenName = current.getEvidenceNames().get(i);
+                current.getEvidences().add(network.get(givenName));
+            }
+            current.createCpt();
         }
         return network;
     }

@@ -1,7 +1,5 @@
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Locale;
+import java.util.*;
 
 public class Ex1 {
 
@@ -22,55 +20,135 @@ public class Ex1 {
         // bayes rule: P(B|J,M)= P(B,J,M) / P(J,M)
         ArrayList<String> nominatorHidden = new ArrayList<>();
         ArrayList<String> denominatorHidden = new ArrayList<>();
-        ArrayList<String> queryVariables = new ArrayList<>();
+        HashMap<String, String> queryVariables = new HashMap<>();
 
         // find all vars which should appear in the bayes rule
-        queryVariables.add(queryVar);
+        queryVariables.put(queryVar, queryTruthValue);
         for (String var : network.keySet()) {
-            // nominator
             if (!evidence.containsKey(var)) {
                 if (!queryVar.equals(var))
                     nominatorHidden.add(var);
                 denominatorHidden.add(var);
             } else {
-                queryVariables.add(var);
+                queryVariables.put(var, evidence.get(var));
             }
         }
 
         // checking if the answer is in the cpt
         BayesianNetworkNode queryNode = network.get(queryVar);
         boolean inCpt = isInCpt(queryNode);
-        if (inCpt) {
-            for (int i = 1; i < queryNode.getCpt().size(); i++) {
-                boolean isLineWithAnswer = queryNode.getCpt().get(i).get(queryVar).equals(queryTruthValue);
-                if (!isLineWithAnswer) continue;
-                for (int j = 0; j < queryNode.getEvidences().size(); j++) {
-                    String evidenceName = queryNode.getEvidences().get(j).getName();
-                    if (!evidence.get(evidenceName).equals(queryNode.getCpt().get(i).get(evidenceName)))
-                        isLineWithAnswer = false;
+        if (inCpt)
+            return ifnCpt(queryNode);
+//            for (int i = 1; i < queryNode.getCpt().size(); i++) {
+//                boolean isLineWithAnswer = queryNode.getCpt().get(i).get(queryVar).equals(queryTruthValue);
+//                if (!isLineWithAnswer) continue;
+//                for (int j = 0; j < queryNode.getEvidences().size(); j++) {
+//                    String evidenceName = queryNode.getEvidences().get(j).getName();
+//                    if (!evidence.get(evidenceName).equals(queryNode.getCpt().get(i).get(evidenceName)))
+//                        isLineWithAnswer = false;
+//                }
+//                if (isLineWithAnswer) // the answer is in this line
+//                    return new double[]{Double.parseDouble(queryNode.getCpt().get(i).get("prob")), 0, 0};
+//            }
+        else {
+            // calculating nominator. first computing the multiplication of the query variables (not hidden).
+            // those vars values are constant during the calculation
+            double nominator = 1;
+            double currProbability = 1;
+            int numberOfHidden = nominatorHidden.size();
+            Set<String> keys = network.keySet();
+            for (int i = 0; i <= numberOfHidden; i++) {
+                // when i is odd all hidden vars are false and vice versa
+                currProbability = 1;
+                for (String var : keys) {
+                    BayesianNetworkNode varNode = network.get(var);
+                    ArrayList<HashMap<String, String>> varCpt = network.get(var).getCpt();
+                    HashMap<String, String> givenTruthValue = new HashMap<>();
+                    if (varCpt.size() > 3) { // has given values
+                        for (String given : varNode.getEvidenceNames()) {
+                            String TruthValue = varCpt.get(i % (varCpt.size() - 1) + 1).get(given);
+                            if (queryVariables.containsKey(given) && !queryVariables.get(given).equals(TruthValue))
+                                TruthValue = TruthValue.equals("T") ? "F" : "T";
+                            givenTruthValue.put(given, TruthValue);
+                        }
+                    }
+                    // if var is query or evidence- truth value should be the same
+//                    if (var.equals(queryVar)) { // query
+//                        if (!varCpt.get(i % (varCpt.size() - 1) + 1).get(var).equals(queryTruthValue))
+//                            currProbability *= Double.parseDouble(varCpt.get(i % varCpt.size() + 1).get("prob"));
+//                        else
+//                            currProbability *= Double.parseDouble(varCpt.get(i % (varCpt.size() - 1) + 1).get("prob"));
+//                        multiplications += 1;
+//                    }
+//
+//////                else if evidence     else if (evidence.containsKey(var)) {
+//                        if (!varCpt.get(i % (varCpt.size() - 1) + 1).get(var).equals(evidence.get(var)))
+//                            currProbability *= Double.parseDouble(varCpt.get(i % varCpt.size() + 1).get("prob"));
+//                        else
+//                            currProbability *= Double.parseDouble(varCpt.get(i % (varCpt.size() - 1) + 1).get("prob"));
+//                        multiplications += 1;
+//                    }
+//                else -> hidden
+                    if (queryVariables.containsKey(var)) { // var is query or evidence
+                        if (varCpt.get(i % (varCpt.size() - 1) + 1).get(var).equals(queryVariables.get(var)))
+                            currProbability *= Double.parseDouble(varCpt.get(i % (varCpt.size() - 1) + 1).get("prob"));
+                        else
+                            currProbability *= Double.parseDouble(varCpt.get(i % (varCpt.size())).get("prob"));
+                    } else {
+                        currProbability *= Double.parseDouble(varCpt.get(i % (varCpt.size() - 1) + 1).get("prob"));
+                    }
+                    multiplications += 1;
                 }
-                if (isLineWithAnswer) // the answer is in this line
-                    return new double[]{Double.parseDouble(queryNode.getCpt().get(i).get("prob")), 0, 0};
+                nominator += currProbability;
+                additions++;
             }
-        }
 
-        // calculating nominator. first computing the multiplication of the query variables (not hidden).
-        // those vars values are constant during the calculation
-        double nominator = 1;
-        double notHiddenMul = 0;
-        for (String queryVar : queryVariables) {
-            if (network.get(queryVar).getEvidenceNames().size() != 0) { // if it has evidences- the prob does
-                // change during the computation
-                for (HashMap<String, String> line : network.get(queryVar).getCpt()) {
-                    if (line.containsValue(queryTruthValue)) {
-                        notHiddenMul *= Double.parseDouble(line.get("prob"));
-                        multiplications++;
-                        break;
+            // denominator
+            numberOfHidden = denominatorHidden.size();
+            double denominator = 0;
+            for (int i = 0; i < numberOfHidden; i++) {
+                currProbability = 1;
+                for (String var : keys) {
+                    ArrayList<HashMap<String, String>> varCpt = network.get(var).getCpt();
+                    if (evidence.containsKey(var)) { // if evidence
+                        if (!varCpt.get(i % (varCpt.size() - 1) + 1).get(var).equals(evidence.get(var)))
+                            currProbability *= Double.parseDouble(varCpt.get(i % (varCpt.size() - 1) + 1).get("prob"));
+                        else
+                            currProbability *= Double.parseDouble(varCpt.get(i % (varCpt.size()) + 1).get("prob"));
+                        multiplications += 1;
+                    } else { // query or hidden
+                        currProbability *= Double.parseDouble(varCpt.get(i % (varCpt.size() - 1) + 1).get("prob"));
+                        multiplications += 1;
                     }
                 }
+                denominator += currProbability;
+                additions++;
+            }
+
+
+            System.out.println((nominator / denominator) + "," + additions + "," + multiplications);
+            return new double[]{nominator / denominator, additions, multiplications};
+        }
+    }
+
+    private static double[] ifnCpt(BayesianNetworkNode queryNode) {
+        double[] answer = new double[3];
+        for (int i = 1; i < queryNode.getCpt().size(); i++) {
+            boolean isLineWithAnswer = queryNode.getCpt().get(i).get(queryVar).equals(queryTruthValue);
+            if (!isLineWithAnswer) continue;
+            for (int j = 0; j < queryNode.getEvidences().size(); j++) {
+                String evidenceName = queryNode.getEvidences().get(j).getName();
+                if (!evidence.get(evidenceName).equals(queryNode.getCpt().get(i).get(evidenceName)))
+                    isLineWithAnswer = false;
+            }
+            if (isLineWithAnswer) { // the answer is in this line
+                answer[0] = Double.parseDouble(queryNode.getCpt().get(i).get("prob"));
+                answer[1] = 0;
+                answer[2] = 0;
+                break;
             }
         }
-        return null;
+        return answer;
     }
 
     /**
@@ -97,7 +175,7 @@ public class Ex1 {
      */
     //TODO
     public static double[] algo2(String query) {
-        return new double[]{1, 2, 5};
+        return null;
     }
 
     /**
@@ -108,7 +186,7 @@ public class Ex1 {
      */
     //TODO
     public static double[] algo3(String query) {
-        return new double[]{1, 2, 6};
+        return null;
     }
 
     public static void parseQuery(String fullQuery) {

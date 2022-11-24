@@ -12,7 +12,7 @@ public class basicInference {
     static int additions = 0;
     static int multiplications = 0;
 
-//    private HashMap<String, String> evidence = new HashMap<>(); // evidences of the query
+    //    private HashMap<String, String> evidence = new HashMap<>(); // evidences of the query
     private String query, fullQuery, queryVar, queryTruthValue, fullGivens;
     private List<String> givens;
     private HashMap<String, BayesianNetworkNode> network, hidden, evidence;
@@ -20,6 +20,7 @@ public class basicInference {
 
     public basicInference(String fullQuery, HashMap<String, BayesianNetworkNode> network) {
         this.fullQuery = fullQuery;
+        this.network = network;
         // parsing the query
         queryVarsTruthValues = new HashMap<>();
         evidence = new HashMap<>();
@@ -30,7 +31,7 @@ public class basicInference {
         queryVarsTruthValues.put(queryVar, queryTruthValue); // insert query value to query values truth value map
         fullGivens = fullQuery.substring(fullQuery.indexOf("|") + 1);
         givens = Arrays.asList(fullGivens.split(","));
-        for (String varAndTruthGiven : network.keySet()) { // insert all givens
+        for (String varAndTruthGiven : givens) { // insert all givens
             int equalSignIndex = varAndTruthGiven.indexOf("=");
             evidence.put(varAndTruthGiven.substring(0, equalSignIndex), network.get(varAndTruthGiven.substring(0, equalSignIndex)));
             queryVarsTruthValues.put(varAndTruthGiven.substring(0, equalSignIndex), varAndTruthGiven.substring(equalSignIndex + 1));
@@ -40,7 +41,6 @@ public class basicInference {
                 hidden.put(varAndTruthHidden, network.get(varAndTruthHidden));
             }
         }
-        this.network = network;
         nominator = calculateNominator();
         denominator = calculateDenominator();
 //        solution = calculateInference();
@@ -50,11 +50,43 @@ public class basicInference {
      * @return nominator value for the law of total probability
      */
     private double calculateNominator() {
-        // for each hidden:
-        for (BayesianNetworkNode hidden : network.values()) {
-            System.out.println(hidden.getName());
+        int numberOfExpressions = (int) Math.pow(2, hidden.size());
+        double currentNominator = 0;
+        HashMap<String, String> currentTruthValues = new HashMap<>();
+        for (int i = 0; i < numberOfExpressions; i++) {
+            // for each hidden:
+            for (BayesianNetworkNode hidden : network.values()) {
+                currentTruthValues.clear();
+                for (int j = 1; j < hidden.getCpt().size(); j++) {
+                    double currentProbability = 1;
+                    HashMap<String, String> currLine = hidden.getCpt().get(j); //current line
+                    boolean isLineValid = true;
+                    if (hidden.getEvidenceNames().size() > 0) {
+                        for (String givenVar : queryVarsTruthValues.keySet()) {
+                            if (currLine.containsKey(givenVar) && !currLine.get(givenVar).equals(queryVarsTruthValues.get(givenVar))) {
+                                isLineValid = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (isLineValid) {
+                        currentProbability *= Double.parseDouble(currLine.get("prob"));
+                        multiplications++;
+                        for (String givenVar : hidden.getEvidenceNames()) {
+                                currentProbability *= Double.parseDouble(network.get(givenVar).getCpt().)
+                        }
+                        for () {
+//                            currentProbability *= Double.parseDouble(given.g)
+                        }
+
+                    }
+
+                    currentNominator += currentProbability;
+                    additions++;
+                }
+            }
         }
-            // calculate prob according truth value- i % outcomes.size?
+        // calculate prob according truth value- i % outcomes.size?
         // multiply by each known node corresponding to hidden truth value
         return nominator;
     }

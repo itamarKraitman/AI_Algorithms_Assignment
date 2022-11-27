@@ -2,8 +2,8 @@ import java.util.*;
 
 public class basicInference {
 
-    private double nominator = 0;
-    private double denominator = 0;
+//    private double nominator = 0;
+//    private double denominator = 0;
     static int additions = 0;
     static int multiplications = 0;
     static double[] solution = new double[3];
@@ -51,6 +51,10 @@ public class basicInference {
      */
     private double calculateNominator() {
         double currentNominator = 0;
+        HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToQueryInference();
+
+        return currentNominator;
+    }
 //        int numberOfExpressions = (int) Math.pow(2, hidden.size());
 //        double currentNominator = 0;
 //        HashMap<String, String> currentTruthValues = new HashMap<>();
@@ -92,11 +96,38 @@ public class basicInference {
 //        return nominator;
 //    }
 
-
-
-
-        return currentNominator;
+    private HashMap<String, ArrayList<HashMap<String, String>>> reduceCptToQueryInference() {
+        HashMap<String, ArrayList<HashMap<String, String>>> validLines = new HashMap<>();
+        // for each var in network:
+        Set<String> allVars = network.keySet();
+        for (String var : allVars) {
+            validLines.put(var, new ArrayList<>());
+            BayesianNetworkNode varNode = network.get(var);
+            ArrayList<HashMap<String, String>> varCpt = varNode.getCpt();
+            for (int i = 1; i < varCpt.size(); i++) {
+                boolean isLineValid = true;
+//            for (HashMap<String, String> line : varCpt) {
+                HashMap<String, String> line = varCpt.get(i);
+                if ((queryVar.equals(var) || evidence.containsKey(var))
+                        && !queryVarsTruthValues.get(var).equals(line.get(var))) {
+                    isLineValid = false;// line is not valid, move to the next line
+                }
+                else if (varNode.getEvidences().size() > 0) { // has given vars
+                    for (String evidenceVar : varNode.getEvidenceNames()) {
+                        if ((queryVar.equals(evidenceVar) || evidence.containsKey(evidenceVar))
+                                && !queryVarsTruthValues.get(evidenceVar).equals(line.get(evidenceVar))) {
+                            isLineValid = false;
+                            break;
+                        } // line is not valid, move to the next line
+                    }
+                }
+                if (isLineValid)
+                    validLines.get(var).add(line);
+            }
+        }
+        return validLines;
     }
+
 
     private double calculateDenominator() {
         double currentDenominator = 0;
@@ -119,9 +150,11 @@ public class basicInference {
         // if both conditions above are false- the answer might be in the cpt
         ArrayList<HashMap<String, String>> queryCpt = queryNode.getCpt();
         for (int i = 1; i < queryCpt.size(); i++) {
-            if (!queryCpt.get(i).get(queryVar).equals(queryTruthValue)) return false; // if the truth value not equals the answer not in this line
+            if (!queryCpt.get(i).get(queryVar).equals(queryTruthValue))
+                return false; // if the truth value not equals the answer not in this line
             for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
-                if (!queryVarsTruthValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName()))) return false;
+                if (!queryVarsTruthValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
+                    return false;
             }
             // if we did not return false- the answer is in this line
             answerInCpt = Double.parseDouble(queryCpt.get(i).get("prob"));
@@ -134,8 +167,8 @@ public class basicInference {
      */
     private double[] calculateInference(boolean inCpt) {
         if (!inCpt) {
-            nominator = calculateNominator();
-            denominator = calculateDenominator();
+            double nominator = calculateNominator();
+            double denominator = calculateDenominator();
             return new double[]{(nominator / denominator), additions, multiplications};
         } else
             return new double[]{answerInCpt, 0, 0};

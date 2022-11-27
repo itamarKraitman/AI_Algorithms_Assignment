@@ -231,7 +231,7 @@ public class Ex1 {
 //                parseQuery(querySplit[0]);
                 switch (querySplit[1]) {
                     case "1":
-                        result = new basicInference(querySplit[0], network).calculateInference();
+                        result = new basicInference(querySplit[0], network).getSolution();
                         break;
 //                    case "2":
 //                        result = algo2(querySplit[0]);

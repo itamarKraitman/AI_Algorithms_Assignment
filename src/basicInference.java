@@ -65,11 +65,12 @@ public class basicInference {
             for (BayesianNetworkNode hiddenNode : hidden.values()) {
                 String hiddenName = hiddenNode.getName();
                 HashMap<String, String> currLine = linesForInference.get(hiddenName).get(i);
-                visited.put(hiddenName, currLine.get(hiddenName));
+                if (!visited.containsKey(hiddenName))
+                    visited.put(hiddenName, currLine.get(hiddenName));
                 currentProbability *= Double.parseDouble(currLine.get("prob")); // multiply by the prob of the hidden
                 multiplications++;
                 for (String varName : currLine.keySet()) {
-                    if (!varName.equals(hiddenName) && !visited.containsKey(varName)) {
+                    if (!varName.equals("prob") && !varName.equals(hiddenName) && !visited.containsKey(varName)) {
                         visited.put(varName, currLine.get(varName)); // adding var name to the visited map
                     }
                 }

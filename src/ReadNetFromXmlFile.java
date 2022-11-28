@@ -82,7 +82,10 @@ public class ReadNetFromXmlFile {
             BayesianNetworkNode current = network.get(nodeName);
             for (int i = 0; i < current.getEvidenceNames().size(); i++) {
                 String givenName = current.getEvidenceNames().get(i);
-                current.getEvidences().add(network.get(givenName));
+                BayesianNetworkNode given = network.get(givenName);
+                current.getEvidences().add(given);
+                if (given != null)
+                    given.getChildren().add(current);
             }
             current.createCpt();
         }

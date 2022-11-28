@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 
 public class BayesianNetworkNode {
@@ -9,6 +10,7 @@ public class BayesianNetworkNode {
     private String name;
     private ArrayList<String> outcome; // T or F
     private ArrayList<BayesianNetworkNode> evidence = new ArrayList<>(); // given variables
+    private ArrayList<BayesianNetworkNode> children = new ArrayList<>(); // all variables which are children
     private ArrayList<String> evidenceNames; // given nodes names, for convenience
     private ArrayList<HashMap<String, String>> cpt = new ArrayList<>(); // conditional probability table
     private String[] probabilities; // nodes probabilities
@@ -38,6 +40,8 @@ public class BayesianNetworkNode {
     }
 
     public ArrayList<BayesianNetworkNode> getEvidences() {return this.evidence;}
+
+    public Collection<BayesianNetworkNode> getChildren() {return this.children;}
 
     public ArrayList<HashMap<String, String>> getCpt() {return this.cpt;}
 
@@ -69,4 +73,6 @@ public class BayesianNetworkNode {
             i++;
         }
     }
+
+
 }

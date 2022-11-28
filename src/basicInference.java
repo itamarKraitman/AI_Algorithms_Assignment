@@ -2,8 +2,6 @@ import java.util.*;
 
 public class basicInference {
 
-//    private double nominator = 0;
-//    private double denominator = 0;
     static int additions = 0;
     static int multiplications = 0;
     static double[] solution = new double[3];
@@ -17,9 +15,12 @@ public class basicInference {
     private final HashMap<String, BayesianNetworkNode> hidden;
     private final HashMap<String, BayesianNetworkNode> evidence;
     private final HashMap<String, String> queryVarsTruthValues;
-    private boolean inCpt = false;
     private double answerInCpt = 0;
 
+    /** Constructor
+     * @param fullQuery query
+     * @param network Bayesian network
+     */
     public basicInference(String fullQuery, HashMap<String, BayesianNetworkNode> network) {
         this.network = network;
         // parsing the query
@@ -42,60 +43,32 @@ public class basicInference {
                 hidden.put(varAndTruthHidden, network.get(varAndTruthHidden));
             }
         }
-        inCpt = isInCpt();
-        solution = calculateInference(inCpt);
+        solution = calculateInference();
     }
 
+
     /**
-     * @return nominator value for the law of total probability
+     * @param linesForInference all valid lines
+     * @return Nominator value
      */
-    private double calculateNominator() {
+    private double calculateNominator(HashMap<String, ArrayList<HashMap<String, String>>> linesForInference) {
         double currentNominator = 0;
-        HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToQueryInference();
 
         return currentNominator;
     }
-//        int numberOfExpressions = (int) Math.pow(2, hidden.size());
-//        double currentNominator = 0;
-//        HashMap<String, String> currentTruthValues = new HashMap<>();
-//        for (int i = 0; i < numberOfExpressions; i++) {
-//            // for each hidden:
-//            for (BayesianNetworkNode hidden : network.values()) {
-//                currentTruthValues.clear();
-//                for (int j = 1; j < hidden.getCpt().size(); j++) {
-//                    double currentProbability = 1;
-//                    HashMap<String, String> currLine = hidden.getCpt().get(j); //current line
-//                    boolean isLineValid = true;
-//                    if (hidden.getEvidenceNames().size() > 0) {
-//                        for (String givenVar : queryVarsTruthValues.keySet()) {
-//                            if (currLine.containsKey(givenVar) && !currLine.get(givenVar).equals(queryVarsTruthValues.get(givenVar))) {
-//                                isLineValid = false;
-//                                break;
-//                            }
-//                        }
-//                    }
-//                    if (isLineValid) {
-//                        currentProbability *= Double.parseDouble(currLine.get("prob"));
-//                        multiplications++;
-//                        for (String givenVar : hidden.getEvidenceNames()) {
-//                            currentProbability *= Double.parseDouble(network.get(givenVar).getCpt().g)
-//                        }
-//                        for () {
-////                            currentProbability *= Double.parseDouble(given.g)
-//                        }
-//
-//                    }
-//
-//                    currentNominator += currentProbability;
-//                    additions++;
-//                }
-//            }
-//        }
-//        // calculate prob according truth value- i % outcomes.size?
-//        // multiply by each known node corresponding to hidden truth value
-//        return nominator;
-//    }
 
+    /**
+     * @param linesForInference all valid lines
+     * @return Denominator value
+     */
+    private double calculateDenominator(HashMap<String, ArrayList<HashMap<String, String>>> linesForInference) {
+        double currentDenominator = 0;
+        return currentDenominator;
+    }
+
+    /**
+     * @return All Cpts with only the needed and valid lines for the query
+     */
     private HashMap<String, ArrayList<HashMap<String, String>>> reduceCptToQueryInference() {
         HashMap<String, ArrayList<HashMap<String, String>>> validLines = new HashMap<>();
         // for each var in network:
@@ -106,7 +79,6 @@ public class basicInference {
             ArrayList<HashMap<String, String>> varCpt = varNode.getCpt();
             for (int i = 1; i < varCpt.size(); i++) {
                 boolean isLineValid = true;
-//            for (HashMap<String, String> line : varCpt) {
                 HashMap<String, String> line = varCpt.get(i);
                 if ((queryVar.equals(var) || evidence.containsKey(var))
                         && !queryVarsTruthValues.get(var).equals(line.get(var))) {
@@ -129,12 +101,9 @@ public class basicInference {
     }
 
 
-    private double calculateDenominator() {
-        double currentDenominator = 0;
-        return currentDenominator;
-    }
-
-
+    /**
+     * @return True if the answer for the query is in the cpt, false otherwise
+     */
     private boolean isInCpt() {
         BayesianNetworkNode queryNode = network.get(queryVar);
         // if the evidences vars are not given vars || given vars are not in evidence vars- the answer not in the cpt
@@ -162,20 +131,22 @@ public class basicInference {
         return true;
     }
 
-    /**
-     * @return double array with 3 arguments- solution, number of additions, and number of multiplications.
+    /** Calculates the probability of the query
+     * @return Double array with 3 arguments- solution, number of additions, and number of multiplications.
      */
-    private double[] calculateInference(boolean inCpt) {
+    private double[] calculateInference() {
+        boolean inCpt = isInCpt();
         if (!inCpt) {
-            double nominator = calculateNominator();
-            double denominator = calculateDenominator();
+            HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToQueryInference();
+            double nominator = calculateNominator(linesForInference);
+            double denominator = calculateDenominator(linesForInference);
             return new double[]{(nominator / denominator), additions, multiplications};
         } else
             return new double[]{answerInCpt, 0, 0};
     }
 
     /**
-     * @return solutions of the inference
+     * @return Solutions of the inference
      */
     public double[] getSolution() {
         return solution;

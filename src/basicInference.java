@@ -57,67 +57,46 @@ public class basicInference {
      */
     private double calculateNominator() {
         HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToNominatorCalculation();
-        // finds the longest cpt
-//        ArrayList<HashMap<String, String>> longestCpt = findLongestCpt(linesForInference);
+//      finds the longest cpt
+        HashMap<String, ArrayList<HashMap<String, String>>> longestCpt = findLongestCpt(linesForInference);
         double currentNominator = 0;
-        HashMap<String, String> currentTruthValues = new HashMap<>();
         int numberOfIterations = hidden.values().stream().mapToInt(hiddenVar -> hiddenVar.getOutcome().size())
                 .reduce(1, (a, b) -> a * b); // number of iterations is the product of all hidden values outcomes
-        Set<String> keys = network.keySet();
-        for (int i = 0; i < numberOfIterations; i++) {
-//            visited.clear();
-//            double currentProbability = 1;
-//            for (String varKey : keys) {
-//                if (i >= linesForInference.get(varKey).size()) {
-//                    j = i % linesForInference.get(varKey).size();
-//                }
-//                else j = i;
-//                HashMap<String, String> line = linesForInference.get(varKey).get(j);
-//                if (linesForInference.get(varKey).size() != 1) {
-//                    if (!visited.containsKey(varKey))
-//                        visited.put(varKey, line.get(varKey));
-//                    for (String givenVar : line.keySet()) {
-//                        if (!givenVar.equals("prob") && !givenVar.equals(varKey) && !visited.containsKey(givenVar))
-//                            visited.put(givenVar, line.get(givenVar));
-//                    }
-//                }
-//                currentProbability *= Double.parseDouble(line.get("prob"));
-//                multiplications++;
-//            }
-//            currentNominator += currentProbability;
-//            additions++;
-//        }
-            for (BayesianNetworkNode currVar : network.values()) {
-                // going threw all vars, and for each line find its corresponding line in the other cpts
-                ArrayList<HashMap<String, String>> varLines = linesForInference.get(currVar.getName());
-                for (HashMap<String, String> line : varLines) {
-                    double currentProbability = Double.parseDouble(line.get("prob"));
-                    for (BayesianNetworkNode comparisonVar : network.values()) {
-                        if (!comparisonVar.getName().equals(currVar.getName())) { // no reason to compare var to itself
-                            ArrayList<HashMap<String, String>> compareLines = linesForInference.get(comparisonVar.getName());
-                            for (HashMap<String, String> compareLine : compareLines) {
-                                boolean commonVarsEqual = true;
-                                for (String key : line.keySet()) {
-                                    if (!key.equals("prob") && compareLine.containsKey(key)) { // if both lines contains this var
-                                        if (!line.get(key).equals(compareLine.get(key))) {
-                                            commonVarsEqual = false; // truth values are not equal
-                                            break;
-                                        }
+        // iterating over the longest cpt of valid lines and fins all
+        for (String currVar : longestCpt.keySet()) {
+            // going threw all vars, and for each line find its corresponding line in the other cpts
+            ArrayList<HashMap<String, String>> varLines = linesForInference.get(currVar);
+            for (HashMap<String, String> line : varLines) {
+                double currentProbability = Double.parseDouble(line.get("prob"));
+                for (BayesianNetworkNode comparisonVar : network.values()) {
+                    if (!comparisonVar.getName().equals(currVar)) { // no reason to compare var to itself
+                        ArrayList<HashMap<String, String>> compareLines = linesForInference.get(comparisonVar.getName());
+                        for (HashMap<String, String> compareLine : compareLines) {
+                            boolean commonVarsEqual = true;
+                            for (String key : line.keySet()) {
+                                if (!key.equals("prob") && compareLine.containsKey(key)) { // if both lines contains this var
+                                    if (!line.get(key).equals(compareLine.get(key))) {
+                                        commonVarsEqual = false; // truth values are not equal
+                                        break;
                                     }
                                 }
-                                if (commonVarsEqual) { // lines should be multiplication
-                                    currentProbability *= Double.parseDouble(compareLine.get("prob"));
-                                    multiplications++;
-                                    break;
-                                }
+                            }
+                            if (commonVarsEqual) { // lines should be multiplication
+                                currentProbability *= Double.parseDouble(compareLine.get("prob"));
+                                multiplications++;
+                                break;
                             }
                         }
                     }
-                    currentNominator += currentProbability;
-                    additions++;
                 }
+                numberOfIterations--;
+                currentNominator += currentProbability;
+                if (numberOfIterations != 0)
+                    additions++;
             }
+
         }
+//        }
         return currentNominator;
     }
 
@@ -135,12 +114,21 @@ public class basicInference {
      * @param linesForInference All valid lines for inference
      * @return the longest cpt
      */
-    private ArrayList<HashMap<String, String>> findLongestCpt
-    (HashMap<String, ArrayList<HashMap<String, String>>> linesForInference) {
-        ArrayList<HashMap<String, String>> longestCpt = new ArrayList<>();
+    private HashMap<String, ArrayList<HashMap<String, String>>> findLongestCpt(HashMap<String, ArrayList<HashMap<String, String>>> linesForInference) {
+        HashMap<String, ArrayList<HashMap<String, String>>> longestCpt = new HashMap<>();
+        boolean flag = true;
+        String keyOfLongest = "";
         for (String var : linesForInference.keySet()) {
-            if (linesForInference.get(var).size() > longestCpt.size())
-                longestCpt = linesForInference.get(var);
+            if (flag) {
+                longestCpt.put(var, linesForInference.get(var));
+                keyOfLongest = var;
+                flag = false;
+            }
+            if (linesForInference.get(var).size() > longestCpt.get(keyOfLongest).size()) {
+                longestCpt.clear();
+                longestCpt.put(var, linesForInference.get(var));
+                keyOfLongest = var;
+            }
         }
         return longestCpt;
     }

@@ -36,8 +36,8 @@ public class Ex1 {
 //                        result = algo3(querySplit[0]);
 //                        break;
                 }
-                answer += (result[0] + "," + result[1] + "," + result[2]);
-                bw.write(answer);
+                answer += (result[0] + "," + (int) result[1] + "," + (int) result[2]);
+                bw.write(answer+"\n");
                 query = br.readLine();
             }
             br.close();

@@ -83,7 +83,7 @@ public class basicInference {
                             }
                             if (commonVarsEqual) { // lines should be multiplication
                                 currentProbability *= Double.parseDouble(compareLine.get("prob"));
-                                multiplications++;
+//                                multiplications++;
                                 break;
                             }
                         }
@@ -91,8 +91,8 @@ public class basicInference {
                 }
                 numberOfIterations--;
                 currentNominator += currentProbability;
-                if (numberOfIterations != 0)
-                    additions++;
+//                if (numberOfIterations != 0)
+//                    additions++;
             }
 
         }
@@ -106,7 +106,45 @@ public class basicInference {
      */
     private double calculateDenominator() {
         HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToDenominatorCalculation();
+//        finds the longest cpt
+        HashMap<String, ArrayList<HashMap<String, String>>> longestCpt = findLongestCpt(linesForInference);
         double currentDenominator = 0;
+        int numberOfIterations = hidden.values().stream().mapToInt(hiddenVar -> hiddenVar.getOutcome().size())
+                .reduce(1, (a, b) -> a * b); // number of iterations is the product of all hidden values outcomes
+        // iterating over the longest cpt of valid lines and fins all
+        for (String currVar : longestCpt.keySet()) {
+            // going threw all vars, and for each line find its corresponding line in the other cpts
+            ArrayList<HashMap<String, String>> varLines = linesForInference.get(currVar);
+            for (HashMap<String, String> line : varLines) {
+                double currentProbability = Double.parseDouble(line.get("prob"));
+                for (BayesianNetworkNode comparisonVar : network.values()) {
+                    if (!comparisonVar.getName().equals(currVar)) { // no reason to compare var to itself
+                        ArrayList<HashMap<String, String>> compareLines = linesForInference.get(comparisonVar.getName());
+                        for (HashMap<String, String> compareLine : compareLines) {
+                            boolean commonVarsEqual = true;
+                            for (String key : line.keySet()) {
+                                if (!key.equals("prob") && compareLine.containsKey(key)) { // if both lines contains this var
+                                    if (!line.get(key).equals(compareLine.get(key))) {
+                                        commonVarsEqual = false; // truth values are not equal
+                                        break;
+                                    }
+                                }
+                            }
+                            if (commonVarsEqual) { // lines should be multiplication
+                                currentProbability *= Double.parseDouble(compareLine.get("prob"));
+                                multiplications++;
+                                break;
+                            }
+                        }
+                    }
+                }
+                numberOfIterations--;
+                currentDenominator += currentProbability;
+                if (numberOfIterations != 0)
+                    additions++;
+            }
+
+        }
         return currentDenominator;
     }
 
@@ -237,7 +275,7 @@ public class basicInference {
         if (!inCpt) {
             double nominator = calculateNominator();
             double denominator = calculateDenominator();
-            return new double[]{(nominator / denominator), additions, multiplications};
+            return new double[]{Double.parseDouble(String.format("%.5f",nominator / denominator)), additions, multiplications};
         } else
             return new double[]{answerInCpt, 0, 0};
     }

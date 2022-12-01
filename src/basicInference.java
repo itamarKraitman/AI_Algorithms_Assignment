@@ -3,9 +3,10 @@ import java.util.stream.Stream;
 
 public class basicInference {
 
-    static int additions = 0;
-    static int multiplications = 0;
-    static double[] solution = new double[3];
+    // additions and multiplications start from -1 because the first addition and multiplication aren't considered.
+    int additions = 0;
+    int multiplications = 0;
+    double[] solution = new double[3];
 
     private String query;
     private final String queryVar;
@@ -51,189 +52,268 @@ public class basicInference {
         solution = calculateInference();
     }
 
-
     /**
      * @return Nominator value
      */
     private double calculateNominator() {
-        HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToNominatorCalculation();
-//      finds the longest cpt
-        HashMap<String, ArrayList<HashMap<String, String>>> longestCpt = findLongestCpt(linesForInference);
+        ArrayList<HashMap<String, String>> nominatorPermutations = findPermutations();
+        double nominator = 0;
         double currentNominator = 0;
-        int numberOfIterations = hidden.values().stream().mapToInt(hiddenVar -> hiddenVar.getOutcome().size())
-                .reduce(1, (a, b) -> a * b); // number of iterations is the product of all hidden values outcomes
-        // iterating over the longest cpt of valid lines and fins all
-        for (String currVar : longestCpt.keySet()) {
-            // going threw all vars, and for each line find its corresponding line in the other cpts
-            ArrayList<HashMap<String, String>> varLines = linesForInference.get(currVar);
-            for (HashMap<String, String> line : varLines) {
-                double currentProbability = Double.parseDouble(line.get("prob"));
-                for (BayesianNetworkNode comparisonVar : network.values()) {
-                    if (!comparisonVar.getName().equals(currVar)) { // no reason to compare var to itself
-                        ArrayList<HashMap<String, String>> compareLines = linesForInference.get(comparisonVar.getName());
-                        for (HashMap<String, String> compareLine : compareLines) {
-                            boolean commonVarsEqual = true;
-                            for (String key : line.keySet()) {
-                                if (!key.equals("prob") && compareLine.containsKey(key)) { // if both lines contains this var
-                                    if (!line.get(key).equals(compareLine.get(key))) {
-                                        commonVarsEqual = false; // truth values are not equal
-                                        break;
-                                    }
-                                }
-                            }
-                            if (commonVarsEqual) { // lines should be multiplication
-                                currentProbability *= Double.parseDouble(compareLine.get("prob"));
-//                                multiplications++;
-                                break;
-                            }
+        boolean firstPermutation = true;
+        // add query variable and its query outcome to all the permutations
+        nominatorPermutations.forEach(permutation -> permutation.put(queryVar, queryTruthValue));
+        // for each permutation, calculate its value and it to the general value
+        for (HashMap<String, String> permutation : nominatorPermutations) {
+            boolean firstVar = true;
+            for (String var : permutation.keySet()) {
+                BayesianNetworkNode currVar = network.get(var);
+                // find the line in the cpt where the outcome equal to the outcome in the permutation
+                for (HashMap<String, String> line : currVar.getCpt()) {
+                    boolean lineFound = true;
+                    if (currVar.getEvidenceNames().size() == 0) { // if doesn't have parents
+                        if (!line.get(var).equals(permutation.get(var))) {
+                            lineFound = false;
+                        }
+                    } else { // var has parents
+                        for (String evi : currVar.getEvidenceNames()) {
+                            if (!line.get(var).equals(permutation.get(var)) || !line.get(evi).equals(permutation.get(evi))) // outcomes are not equal
+                                lineFound = false;
+                            break;
                         }
                     }
+                    if (lineFound) {
+                        if (firstVar) {// no multiplication method is applied for the first probability because it is the first
+                            currentNominator = Double.parseDouble(line.get("prob"));
+                            firstVar = false;
+                        } else {
+                            currentNominator *= Double.parseDouble(line.get("prob"));
+                            multiplications++;
+                        }
+                        break;
+                    }
                 }
-                numberOfIterations--;
-                currentNominator += currentProbability;
-//                if (numberOfIterations != 0)
-//                    additions++;
             }
-
+            if (firstPermutation) { // no multiplication method is applied for the first probability because it is the first
+                nominator = currentNominator;
+                firstPermutation = false;
+            } else {
+                nominator += currentNominator;
+                additions++;
+            }
         }
+        return nominator;
+    }
+
+    /**
+     * @return All permutations except of the query variable
+     */
+    private ArrayList<HashMap<String, String>> findPermutations() {
+        ArrayList<HashMap<String, String>> permutations = new ArrayList<>();
+        // number of permutations is equal to the multiplication of all hidden outcomes
+        int numberOfHiddenOutcomes = hidden.values().stream().mapToInt(hiddenVar -> hiddenVar.getOutcome().size())
+                .reduce(1, (x, y) -> x * y);
+        int i = 0;
+        while (i < numberOfHiddenOutcomes) {
+
+            HashMap<String, String> permutation = new HashMap<>();
+            // add all evidences
+            for (String evi : queryVarsTruthValues.keySet()) {
+                if (!evi.equals(queryVar))
+                    permutation.put(evi, queryVarsTruthValues.get(evi));
+            }
+            int count = 1;
+            ArrayList<String> hiddenNames = new ArrayList<>(hidden.keySet());
+            for (String hid : hiddenNames) {
+                count *= hidden.get(hid).getOutcome().size();
+                permutation.put(hidden.get(hid).getName(), hidden.get(hid).getOutcome().get((i / (numberOfHiddenOutcomes / count))
+                        % hidden.get(hid).getOutcome().size()));
+            }
+            permutations.add(permutation);
+            i++;
+        }
+        return permutations;
+    }
+//        HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToNominatorCalculation();
+////      finds the longest cpt
+////        ArrayList<HashMap<String, String>> permutation = getAllPermutations(linesForInference, false);
+//        HashMap<String, ArrayList<HashMap<String, String>>> longestCpt = findLongestCpt(linesForInference);
+//        double currentNominator = 0;
+////        int numberOfIterations = hidden.values().stream().mapToInt(hiddenVar -> hiddenVar.getOutcome().size())
+////                .reduce(1, (a, b) -> a * b); // number of iterations is the product of all hidden values outcomes
+//        int numberOfIterations = findNumberOfIterations(longestCpt);
+////        // iterating over the longest cpt of valid lines and fins all
+//        for (String currVar : longestCpt.keySet()) {
+//            // going threw all vars, and for each line find its corresponding line in the other cpts
+//            ArrayList<HashMap<String, String>> varLines = linesForInference.get(currVar);
+//            for (HashMap<String, String> line : varLines) {
+//                double currentProbability = Double.parseDouble(line.get("prob"));
+//                for (BayesianNetworkNode comparisonVar : network.values()) {
+//                    if (!comparisonVar.getName().equals(currVar)) { // no reason to compare var to itself
+//                        ArrayList<HashMap<String, String>> compareLines = linesForInference.get(comparisonVar.getName());
+//                        for (HashMap<String, String> compareLine : compareLines) {
+//                            boolean commonVarsEqual = true;
+//                            for (String key : line.keySet()) {
+//                                if (!key.equals("prob") && compareLine.containsKey(key)) { // if both lines contains this var
+//                                    if (!line.get(key).equals(compareLine.get(key))) {
+//                                        commonVarsEqual = false; // truth values are not equal
+//                                        break;
+//                                    }
+//                                }
+//                            }
+//                            if (commonVarsEqual) { // lines should be multiplication
+//                                currentProbability *= Double.parseDouble(compareLine.get("prob"));
+////                                multiplications++;
+////                                compareLines.remove(compareLine);
+//                                break;
+//                            }
+//                        }
+//                    }
+//                }
+//                numberOfIterations--;
+//                currentNominator += currentProbability;
+////                if (numberOfIterations != 0)
+////                    additions++;
+//            }
+//
 //        }
-        return currentNominator;
-    }
+////        }
+//        return currentNominator;
 
-
-    /**
-     * @return Denominator value
-     */
-    private double calculateDenominator() {
-        HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToDenominatorCalculation();
-//        finds the longest cpt
-        HashMap<String, ArrayList<HashMap<String, String>>> longestCpt = findLongestCpt(linesForInference);
-        double currentDenominator = 0;
-        int numberOfIterations = hidden.values().stream().mapToInt(hiddenVar -> hiddenVar.getOutcome().size())
-                .reduce(1, (a, b) -> a * b); // number of iterations is the product of all hidden values outcomes
-        // iterating over the longest cpt of valid lines and fins all
-        for (String currVar : longestCpt.keySet()) {
-            // going threw all vars, and for each line find its corresponding line in the other cpts
-            ArrayList<HashMap<String, String>> varLines = linesForInference.get(currVar);
-            for (HashMap<String, String> line : varLines) {
-                double currentProbability = Double.parseDouble(line.get("prob"));
-                for (BayesianNetworkNode comparisonVar : network.values()) {
-                    if (!comparisonVar.getName().equals(currVar)) { // no reason to compare var to itself
-                        ArrayList<HashMap<String, String>> compareLines = linesForInference.get(comparisonVar.getName());
-                        for (HashMap<String, String> compareLine : compareLines) {
-                            boolean commonVarsEqual = true;
-                            for (String key : line.keySet()) {
-                                if (!key.equals("prob") && compareLine.containsKey(key)) { // if both lines contains this var
-                                    if (!line.get(key).equals(compareLine.get(key))) {
-                                        commonVarsEqual = false; // truth values are not equal
-                                        break;
-                                    }
-                                }
-                            }
-                            if (commonVarsEqual) { // lines should be multiplication
-                                currentProbability *= Double.parseDouble(compareLine.get("prob"));
-                                multiplications++;
-                                break;
-                            }
-                        }
-                    }
-                }
-                numberOfIterations--;
-                currentDenominator += currentProbability;
-                if (numberOfIterations != 0)
-                    additions++;
-            }
-
-        }
-        return currentDenominator;
-    }
-
-    /**
-     * @param linesForInference All valid lines for inference
-     * @return the longest cpt
-     */
-    private HashMap<String, ArrayList<HashMap<String, String>>> findLongestCpt(HashMap<String, ArrayList<HashMap<String, String>>> linesForInference) {
-        HashMap<String, ArrayList<HashMap<String, String>>> longestCpt = new HashMap<>();
-        boolean flag = true;
-        String keyOfLongest = "";
-        for (String var : linesForInference.keySet()) {
-            if (flag) {
-                longestCpt.put(var, linesForInference.get(var));
-                keyOfLongest = var;
-                flag = false;
-            }
-            if (linesForInference.get(var).size() > longestCpt.get(keyOfLongest).size()) {
-                longestCpt.clear();
-                longestCpt.put(var, linesForInference.get(var));
-                keyOfLongest = var;
-            }
-        }
-        return longestCpt;
-    }
-
-    /**
-     * @return All Cpts with only the needed and valid lines for the nominator calculation
-     */
-    private HashMap<String, ArrayList<HashMap<String, String>>> reduceCptToNominatorCalculation() {
-        HashMap<String, ArrayList<HashMap<String, String>>> validLines = new HashMap<>();
-        // for each var in network:
-        Set<String> allVars = network.keySet();
-        for (String var : allVars) {
-            validLines.put(var, new ArrayList<>());
-            BayesianNetworkNode varNode = network.get(var);
-            ArrayList<HashMap<String, String>> varCpt = varNode.getCpt();
-            for (int i = 1; i < varCpt.size(); i++) {
-                boolean isLineValid = true;
-                HashMap<String, String> line = varCpt.get(i);
-                if ((queryVar.equals(var) || evidence.containsKey(var))
-                        && !queryVarsTruthValues.get(var).equals(line.get(var))) {
-                    isLineValid = false;// line is not valid, move to the next line
-                } else if (varNode.getEvidences().size() > 0) { // has given vars
-                    for (String evidenceVar : varNode.getEvidenceNames()) {
-                        if ((queryVar.equals(evidenceVar) || evidence.containsKey(evidenceVar))
-                                && !queryVarsTruthValues.get(evidenceVar).equals(line.get(evidenceVar))) {
-                            isLineValid = false;
-                            break;
-                        } // line is not valid, move to the next line
-                    }
-                }
-                if (isLineValid)
-                    validLines.get(var).add(line);
-            }
-        }
-        return validLines;
-    }
-
-    /**
-     * @return All Cpts with only the needed and valid lines for the denominator calculation
-     */
-    private HashMap<String, ArrayList<HashMap<String, String>>> reduceCptToDenominatorCalculation() {
-        HashMap<String, ArrayList<HashMap<String, String>>> validLines = new HashMap<>();
-        Set<String> allVars = network.keySet();
-        for (String var : allVars) {
-            validLines.put(var, new ArrayList<>());
-            BayesianNetworkNode varNode = network.get(var);
-            ArrayList<HashMap<String, String>> varCpt = varNode.getCpt();
-            for (int i = 1; i < varCpt.size(); i++) {
-                boolean isLineValid = true;
-                HashMap<String, String> line = varCpt.get(i);
-                if (evidence.containsKey(var) && !queryVarsTruthValues.get(var).equals(line.get(var))) {
-                    isLineValid = false;// line is not valid
-                } else if (varNode.getEvidences().size() > 0) { // has given vars
-                    for (String evidenceVar : varNode.getEvidenceNames()) {
-                        if (evidence.containsKey(evidenceVar) && !queryVarsTruthValues.get(evidenceVar).equals(line.get(evidenceVar))) {
-                            isLineValid = false;
-                            break;
-                        } // line is not valid, move to the next line
-                    }
-                }
-                if (isLineValid)
-                    validLines.get(var).add(line);
-            }
-        }
-        return validLines;
-    }
-
+//
+//    /**
+//     * @return Denominator value
+//     */
+//    private double calculateDenominator() {
+//        HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToDenominatorCalculation();
+////        finds the longest cpt
+//        HashMap<String, ArrayList<HashMap<String, String>>> longestCpt = findLongestCpt(linesForInference);
+//        double currentDenominator = 0;
+//        int numberOfIterations = findNumberOfIterations(longestCpt); // number of iterations is the product of all hidden values outcomes
+//        // iterating over the longest cpt of valid lines and find all
+//        /*for (String currVar : longestCpt.keySet()) {*/
+//        String currVar = new ArrayList<>(longestCpt.keySet()).get(0);
+//        // going threw all vars, and for each line find its corresponding line in the other cpts
+//        ArrayList<HashMap<String, String>> varLines = linesForInference.get(currVar);
+//        for (HashMap<String, String> line : varLines) {
+//            double currentProbability = Double.parseDouble(line.get("prob"));
+//            for (BayesianNetworkNode comparisonVar : network.values()) {
+//                int i = 0;
+//                if (!comparisonVar.getName().equals(currVar)) { // no reason to compare var to itself
+//                    ArrayList<HashMap<String, String>> compareLines = linesForInference.get(comparisonVar.getName());
+//                    for (HashMap<String, String> compareLine : compareLines) {
+//                        boolean commonVarsEqual = true;
+//                        for (String key : line.keySet()) {
+//                            if (!key.equals("prob") && compareLine.containsKey(key)) { // if both lines contains this var
+//                                if (!line.get(key).equals(compareLine.get(key))) {
+//                                    commonVarsEqual = false; // truth values are not equal
+//                                    break;
+//                                }
+//                            }
+//                        }
+//                        if (commonVarsEqual) { // lines should be multiplication
+//                            currentProbability *= Double.parseDouble(compareLine.get("prob"));
+//                            multiplications++;
+////                            compareLines.remove(compareLine);
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
+//            numberOfIterations--;
+//            currentDenominator += currentProbability;
+//            if (numberOfIterations != 0)
+//                additions++;
+//        }
+//        return currentDenominator;
+//    }
+//
+//    /**
+//     * @param linesForInference All valid lines for inference
+//     * @return the longest cpt
+//     */
+//    private HashMap<String, ArrayList<HashMap<String, String>>> findLongestCpt(HashMap<String, ArrayList<HashMap<String, String>>> linesForInference) {
+//        HashMap<String, ArrayList<HashMap<String, String>>> longestCpt = new HashMap<>();
+//        boolean flag = true;
+//        String keyOfLongest = "";
+//        for (String var : linesForInference.keySet()) {
+//            if (flag) {
+//                longestCpt.put(var, linesForInference.get(var));
+//                keyOfLongest = var;
+//                flag = false;
+//            }
+//            if (linesForInference.get(var).size() > longestCpt.get(keyOfLongest).size()) {
+//                longestCpt.clear();
+//                longestCpt.put(var, linesForInference.get(var));
+//                keyOfLongest = var;
+//            }
+//        }
+//        return longestCpt;
+//    }
+//
+//    /**
+//     * @return All Cpts with only the needed and valid lines for the nominator calculation
+//     */
+//    private HashMap<String, ArrayList<HashMap<String, String>>> reduceCptToNominatorCalculation() {
+//        HashMap<String, ArrayList<HashMap<String, String>>> validLines = new HashMap<>();
+//        // for each var in network:
+//        Set<String> allVars = network.keySet();
+//        for (String var : allVars) {
+//            validLines.put(var, new ArrayList<>());
+//            BayesianNetworkNode varNode = network.get(var);
+//            ArrayList<HashMap<String, String>> varCpt = varNode.getCpt();
+//            for (int i = 1; i < varCpt.size(); i++) {
+//                boolean isLineValid = true;
+//                HashMap<String, String> line = varCpt.get(i);
+//                if ((queryVar.equals(var) || evidence.containsKey(var))
+//                        && !queryVarsTruthValues.get(var).equals(line.get(var))) {
+//                    isLineValid = false;// line is not valid, move to the next line
+//                } else if (varNode.getEvidences().size() > 0) { // has given vars
+//                    for (String evidenceVar : varNode.getEvidenceNames()) {
+//                        if ((queryVar.equals(evidenceVar) || evidence.containsKey(evidenceVar))
+//                                && !queryVarsTruthValues.get(evidenceVar).equals(line.get(evidenceVar))) {
+//                            isLineValid = false;
+//                            break;
+//                        } // line is not valid, move to the next line
+//                    }
+//                }
+//                if (isLineValid)
+//                    validLines.get(var).add(line);
+//            }
+//        }
+//        return validLines;
+//    }
+//
+//    /**
+//     * @return All Cpts with only the needed and valid lines for the denominator calculation
+//     */
+//    private HashMap<String, ArrayList<HashMap<String, String>>> reduceCptToDenominatorCalculation() {
+//        HashMap<String, ArrayList<HashMap<String, String>>> validLines = new HashMap<>();
+//        Set<String> allVars = network.keySet();
+//        for (String var : allVars) {
+//            validLines.put(var, new ArrayList<>());
+//            BayesianNetworkNode varNode = network.get(var);
+//            ArrayList<HashMap<String, String>> varCpt = varNode.getCpt();
+//            for (int i = 1; i < varCpt.size(); i++) {
+//                boolean isLineValid = true;
+//                HashMap<String, String> line = varCpt.get(i);
+//                if (evidence.containsKey(var) && !queryVarsTruthValues.get(var).equals(line.get(var))) {
+//                    isLineValid = false;// line is not valid
+//                } else if (varNode.getEvidences().size() > 0) { // has given vars
+//                    for (String evidenceVar : varNode.getEvidenceNames()) {
+//                        if (evidence.containsKey(evidenceVar) && !queryVarsTruthValues.get(evidenceVar).equals(line.get(evidenceVar))) {
+//                            isLineValid = false;
+//                            break;
+//                        } // line is not valid, move to the next line
+//                    }
+//                }
+//                if (isLineValid)
+//                    validLines.get(var).add(line);
+//            }
+//        }
+//        return validLines;
+//    }
+//
+//
 
     /**
      * @return True if the answer for the query is in the cpt, false otherwise
@@ -264,6 +344,15 @@ public class basicInference {
         }
         return true;
     }
+//    }
+//
+//    private int findNumberOfIterations(HashMap<String, ArrayList<HashMap<String, String>>> longestCpt) {
+//        int longestValueSize = 0;
+//        for (ArrayList<HashMap<String, String>> value : longestCpt.values())
+//            if (value.size() > longestValueSize) longestValueSize = value.size();
+//        return longestValueSize;
+//    }
+
 
     /**
      * Calculates the probability of the query
@@ -274,8 +363,8 @@ public class basicInference {
         boolean inCpt = isInCpt();
         if (!inCpt) {
             double nominator = calculateNominator();
-            double denominator = calculateDenominator();
-            return new double[]{Double.parseDouble(String.format("%.5f",nominator / denominator)), additions, multiplications};
+            double denominator = 1;
+            return new double[]{Double.parseDouble(String.format("%.5f", nominator / denominator)), additions, multiplications};
         } else
             return new double[]{answerInCpt, 0, 0};
     }

@@ -2,7 +2,6 @@ import java.util.*;
 
 public class basicInference {
 
-
     int additions = 0;
     int multiplications = 0;
     double[] solution;
@@ -48,17 +47,19 @@ public class basicInference {
         solution = calculateInference();
     }
 
+
     /**
-     * @return Calculating nominator value
+     * @param isNominator permutations are generated according the part that should be calculated (nominator or denominator)
+     * @return the answer of the part that should be calculated (nominator or denominator)
      */
     private double calculateProbability(boolean isNominator) {
-        ArrayList<HashMap<String, String>> permutations;
+        ArrayList<HashMap<String, String>> permutations = isNominator ? findPermutations(false) : findPermutations(true);
         if (isNominator) {
-            permutations = findPermutations(false);
             // add query variable and its query outcome to all the permutations
             permutations.forEach(permutation -> permutation.put(queryVar, queryTruthValue));
-        } else // in the denominator the calculation is made on each outcome of the query var
-            permutations = findPermutations(true);
+        } else { // remove all the lines that are in both nominator and denominator in order to not make redundant moves
+            permutations.removeIf(permutation -> permutation.get(queryVar).equals(queryTruthValue));
+        }
         double result = 0;
         double currentResult = 0;
         boolean firstPermutation = true;
@@ -114,7 +115,8 @@ public class basicInference {
         // number of permutations is equal to the multiplication of all hidden outcomes
         int numberOfHiddenOutcomes = hidden.values().stream().mapToInt(hiddenVar -> hiddenVar.getOutcome().size())
                 .reduce(1, (x, y) -> x * y);
-//        int numberOfOutcomesWithQuery = numberOfHiddenOutcomes * network.get(queryVar).getOutcome().size();
+        if (permutationsForDenominator)
+            numberOfHiddenOutcomes *= network.get(queryVar).getOutcome().size();
         int i = 0;
         while (i < numberOfHiddenOutcomes) {
             HashMap<String, String> permutation = new HashMap<>();
@@ -131,7 +133,8 @@ public class basicInference {
                         % hidden.get(hid).getOutcome().size()));
             }
             if (permutationsForDenominator) { // if the permutations are for the denominator calculation, manipulate also with the query var as well
-                permutation.put(queryVar, "F");
+                BayesianNetworkNode queryNode = network.get(queryVar);
+                permutation.put(queryVar, queryNode.getOutcome().get(i % queryNode.getOutcome().size()));
             }
             permutations.add(permutation);
             i++;

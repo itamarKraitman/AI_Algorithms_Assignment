@@ -1,18 +1,14 @@
 import java.util.*;
-import java.util.stream.Stream;
 
 public class basicInference {
 
-    // additions and multiplications start from -1 because the first addition and multiplication aren't considered.
+
     int additions = 0;
     int multiplications = 0;
-    double[] solution = new double[3];
+    double[] solution;
 
-    private String query;
     private final String queryVar;
     private final String queryTruthValue;
-    private String fullGivens;
-    private List<String> givens;
     private final HashMap<String, BayesianNetworkNode> network;
     private final HashMap<String, BayesianNetworkNode> hidden;
     private final HashMap<String, BayesianNetworkNode> evidence;
@@ -31,12 +27,12 @@ public class basicInference {
         queryVarsTruthValues = new HashMap<>();
         evidence = new HashMap<>();
         hidden = new HashMap<>();
-        query = fullQuery.substring(2, fullQuery.indexOf("|")); // B=T
+        String query = fullQuery.substring(2, fullQuery.indexOf("|")); // B=T
         queryVar = query.substring(0, query.indexOf("=")); // B
         queryTruthValue = query.substring(query.indexOf("=") + 1); // T
         queryVarsTruthValues.put(queryVar, queryTruthValue); // insert query value to query values truth value map
-        fullGivens = fullQuery.substring(fullQuery.indexOf("|") + 1);
-        givens = Arrays.asList(fullGivens.split(","));
+        String fullGivens = fullQuery.substring(fullQuery.indexOf("|") + 1);
+        List<String> givens = Arrays.asList(fullGivens.split(","));
         // insert all givens
         givens.forEach(varAndTruthGiven -> {
             int equalSignIndex = varAndTruthGiven.indexOf("=");
@@ -53,17 +49,21 @@ public class basicInference {
     }
 
     /**
-     * @return Nominator value
+     * @return Calculating nominator value
      */
-    private double calculateNominator() {
-        ArrayList<HashMap<String, String>> nominatorPermutations = findPermutations();
-        double nominator = 0;
-        double currentNominator = 0;
+    private double calculateProbability(boolean isNominator) {
+        ArrayList<HashMap<String, String>> permutations;
+        if (isNominator) {
+            permutations = findPermutations(false);
+            // add query variable and its query outcome to all the permutations
+            permutations.forEach(permutation -> permutation.put(queryVar, queryTruthValue));
+        } else // in the denominator the calculation is made on each outcome of the query var
+            permutations = findPermutations(true);
+        double result = 0;
+        double currentResult = 0;
         boolean firstPermutation = true;
-        // add query variable and its query outcome to all the permutations
-        nominatorPermutations.forEach(permutation -> permutation.put(queryVar, queryTruthValue));
         // for each permutation, calculate its value and it to the general value
-        for (HashMap<String, String> permutation : nominatorPermutations) {
+        for (HashMap<String, String> permutation : permutations) {
             boolean firstVar = true;
             for (String var : permutation.keySet()) {
                 BayesianNetworkNode currVar = network.get(var);
@@ -76,17 +76,18 @@ public class basicInference {
                         }
                     } else { // var has parents
                         for (String evi : currVar.getEvidenceNames()) {
-                            if (!line.get(var).equals(permutation.get(var)) || !line.get(evi).equals(permutation.get(evi))) // outcomes are not equal
+                            if (!line.get(var).equals(permutation.get(var)) || !line.get(evi).equals(permutation.get(evi))) { // outcomes are not equal
                                 lineFound = false;
-                            break;
+                                break;
+                            }
                         }
                     }
                     if (lineFound) {
                         if (firstVar) {// no multiplication method is applied for the first probability because it is the first
-                            currentNominator = Double.parseDouble(line.get("prob"));
+                            currentResult = Double.parseDouble(line.get("prob"));
                             firstVar = false;
                         } else {
-                            currentNominator *= Double.parseDouble(line.get("prob"));
+                            currentResult *= Double.parseDouble(line.get("prob"));
                             multiplications++;
                         }
                         break;
@@ -94,27 +95,28 @@ public class basicInference {
                 }
             }
             if (firstPermutation) { // no multiplication method is applied for the first probability because it is the first
-                nominator = currentNominator;
+                result = currentResult;
                 firstPermutation = false;
             } else {
-                nominator += currentNominator;
+                result += currentResult;
                 additions++;
             }
         }
-        return nominator;
+        return result;
     }
+
 
     /**
      * @return All permutations except of the query variable
      */
-    private ArrayList<HashMap<String, String>> findPermutations() {
+    private ArrayList<HashMap<String, String>> findPermutations(boolean permutationsForDenominator) {
         ArrayList<HashMap<String, String>> permutations = new ArrayList<>();
         // number of permutations is equal to the multiplication of all hidden outcomes
         int numberOfHiddenOutcomes = hidden.values().stream().mapToInt(hiddenVar -> hiddenVar.getOutcome().size())
                 .reduce(1, (x, y) -> x * y);
+//        int numberOfOutcomesWithQuery = numberOfHiddenOutcomes * network.get(queryVar).getOutcome().size();
         int i = 0;
         while (i < numberOfHiddenOutcomes) {
-
             HashMap<String, String> permutation = new HashMap<>();
             // add all evidences
             for (String evi : queryVarsTruthValues.keySet()) {
@@ -128,11 +130,126 @@ public class basicInference {
                 permutation.put(hidden.get(hid).getName(), hidden.get(hid).getOutcome().get((i / (numberOfHiddenOutcomes / count))
                         % hidden.get(hid).getOutcome().size()));
             }
+            if (permutationsForDenominator) { // if the permutations are for the denominator calculation, manipulate also with the query var as well
+                permutation.put(queryVar, "F");
+            }
             permutations.add(permutation);
             i++;
         }
         return permutations;
     }
+
+
+    /**
+     * @return True if the answer for the query is in the cpt, false otherwise
+     */
+    private boolean isInCpt() {
+        BayesianNetworkNode queryNode = network.get(queryVar);
+        // if the evidences vars are not given vars || given vars are not in evidence vars- the answer not in the cpt
+        for (String evidence : evidence.keySet()) {
+            if (!queryNode.getEvidenceNames().contains(evidence)) {
+                return false;
+            }
+        }
+        for (String evidenceVar : queryNode.getEvidenceNames()) {
+            if (!evidence.containsKey(evidenceVar))
+                return false;
+        }
+        // if both conditions above are false- the answer might be in the cpt
+        ArrayList<HashMap<String, String>> queryCpt = queryNode.getCpt();
+        for (int i = 1; i < queryCpt.size(); i++) {
+            if (!queryCpt.get(i).get(queryVar).equals(queryTruthValue))
+                return false; // if the truth value not equals the answer not in this line
+            for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
+                if (!queryVarsTruthValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
+                    return false;
+            }
+            // if we did not return false- the answer is in this line
+            answerInCpt = Double.parseDouble(queryCpt.get(i).get("prob"));
+        }
+        return true;
+    }
+
+
+    /**
+     * Calculates the probability of the query
+     *
+     * @return Double array with 3 arguments- solution, number of additions, and number of multiplications.
+     */
+    private double[] calculateInference() {
+        boolean inCpt = isInCpt();
+        if (!inCpt) {
+            double nominator = calculateProbability(true);
+            double denominator = calculateProbability(false);
+            // increase addition by 1 because of the addition in the denominator
+            return new double[]{Double.parseDouble(String.format("%.5f", nominator / (nominator + denominator))), additions + 1, multiplications};
+        } else
+            return new double[]{answerInCpt, 0, 0};
+    }
+
+    /**
+     * @return Solutions of the inference
+     */
+    public double[] getSolution() {
+        return solution;
+    }
+}
+
+//    /**
+//     * @return Calculating denominator value
+//     */
+//    public double calculateDenominator() {
+//        ArrayList<HashMap<String, String>> denominatorPermutations = findPermutations(true);
+//        double denominator = 0;
+//        double currentDenominator = 0;
+//        boolean firstPermutation = true;
+//        // add query variable and its query outcome to all the permutations
+////        nominatorPermutations.forEach(permutation -> permutation.put(queryVar, queryTruthValue));
+//        // for each permutation, calculate its value and it to the general value
+//        for (HashMap<String, String> permutation : denominatorPermutations) {
+//            boolean firstVar = true;
+//            for (String var : permutation.keySet()) {
+//                BayesianNetworkNode currVar = network.get(var);
+//                // find the line in the cpt where the outcome equal to the outcome in the permutation
+//                for (HashMap<String, String> line : currVar.getCpt()) {
+//                    boolean lineFound = true;
+//                    if (currVar.getEvidenceNames().size() == 0) { // if doesn't have parents
+//                        if (!line.get(var).equals(permutation.get(var))) {
+//                            lineFound = false;
+//                        }
+//                    } else { // var has parents
+//                        for (String evi : currVar.getEvidenceNames()) {
+//                            if (!line.get(var).equals(permutation.get(var)) || !line.get(evi).equals(permutation.get(evi))) {// outcomes are not equal
+//                                lineFound = false;
+//                                break;
+//                            }
+//                        }
+//                    }
+//                    if (lineFound) {
+//                        if (firstVar) {// no multiplication method is applied for the first probability because it is the first
+//                            currentDenominator = Double.parseDouble(line.get("prob"));
+//                            firstVar = false;
+//                        } else {
+//                            currentDenominator *= Double.parseDouble(line.get("prob"));
+//                            multiplications++;
+//                        }
+//                        break;
+//                    }
+//                }
+//            }
+//            denominator += currentDenominator;
+//            additions++;
+//        }
+//        return denominator;
+//    }
+//    }
+//
+//    private int findNumberOfIterations(HashMap<String, ArrayList<HashMap<String, String>>> longestCpt) {
+//        int longestValueSize = 0;
+//        for (ArrayList<HashMap<String, String>> value : longestCpt.values())
+//            if (value.size() > longestValueSize) longestValueSize = value.size();
+//        return longestValueSize;
+//    }
 //        HashMap<String, ArrayList<HashMap<String, String>>> linesForInference = reduceCptToNominatorCalculation();
 ////      finds the longest cpt
 ////        ArrayList<HashMap<String, String>> permutation = getAllPermutations(linesForInference, false);
@@ -178,7 +295,6 @@ public class basicInference {
 //        }
 ////        }
 //        return currentNominator;
-
 //
 //    /**
 //     * @return Denominator value
@@ -314,65 +430,3 @@ public class basicInference {
 //    }
 //
 //
-
-    /**
-     * @return True if the answer for the query is in the cpt, false otherwise
-     */
-    private boolean isInCpt() {
-        BayesianNetworkNode queryNode = network.get(queryVar);
-        // if the evidences vars are not given vars || given vars are not in evidence vars- the answer not in the cpt
-        for (String evidence : evidence.keySet()) {
-            if (!queryNode.getEvidenceNames().contains(evidence)) {
-                return false;
-            }
-        }
-        for (String evidenceVar : queryNode.getEvidenceNames()) {
-            if (!evidence.containsKey(evidenceVar))
-                return false;
-        }
-        // if both conditions above are false- the answer might be in the cpt
-        ArrayList<HashMap<String, String>> queryCpt = queryNode.getCpt();
-        for (int i = 1; i < queryCpt.size(); i++) {
-            if (!queryCpt.get(i).get(queryVar).equals(queryTruthValue))
-                return false; // if the truth value not equals the answer not in this line
-            for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
-                if (!queryVarsTruthValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
-                    return false;
-            }
-            // if we did not return false- the answer is in this line
-            answerInCpt = Double.parseDouble(queryCpt.get(i).get("prob"));
-        }
-        return true;
-    }
-//    }
-//
-//    private int findNumberOfIterations(HashMap<String, ArrayList<HashMap<String, String>>> longestCpt) {
-//        int longestValueSize = 0;
-//        for (ArrayList<HashMap<String, String>> value : longestCpt.values())
-//            if (value.size() > longestValueSize) longestValueSize = value.size();
-//        return longestValueSize;
-//    }
-
-
-    /**
-     * Calculates the probability of the query
-     *
-     * @return Double array with 3 arguments- solution, number of additions, and number of multiplications.
-     */
-    private double[] calculateInference() {
-        boolean inCpt = isInCpt();
-        if (!inCpt) {
-            double nominator = calculateNominator();
-            double denominator = 1;
-            return new double[]{Double.parseDouble(String.format("%.5f", nominator / denominator)), additions, multiplications};
-        } else
-            return new double[]{answerInCpt, 0, 0};
-    }
-
-    /**
-     * @return Solutions of the inference
-     */
-    public double[] getSolution() {
-        return solution;
-    }
-}

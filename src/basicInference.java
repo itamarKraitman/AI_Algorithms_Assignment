@@ -111,8 +111,8 @@ public class basicInference {
      * @return All permutations except of the query variable
      */
     private ArrayList<HashMap<String, String>> findPermutations(boolean permutationsForDenominator) {
-        ArrayList<HashMap<String, String>> permutations = new ArrayList<>();
-        // number of permutations is equal to the multiplication of all hidden outcomes
+        ArrayList<HashMap<String, String>> AllPermutations = new ArrayList<>();
+        // number of AllPermutations is equal to the multiplication of all hidden outcomes
         int numberOfHiddenOutcomes = hidden.values().stream().mapToInt(hiddenVar -> hiddenVar.getOutcome().size())
                 .reduce(1, (x, y) -> x * y);
         if (permutationsForDenominator)
@@ -132,14 +132,14 @@ public class basicInference {
                 permutation.put(hidden.get(hid).getName(), hidden.get(hid).getOutcome().get((i / (numberOfHiddenOutcomes / count))
                         % hidden.get(hid).getOutcome().size()));
             }
-            if (permutationsForDenominator) { // if the permutations are for the denominator calculation, manipulate also with the query var as well
+            if (permutationsForDenominator) { // if the AllPermutations are for the denominator calculation, manipulate also with the query var as well
                 BayesianNetworkNode queryNode = network.get(queryVar);
                 permutation.put(queryVar, queryNode.getOutcome().get(i % queryNode.getOutcome().size()));
             }
-            permutations.add(permutation);
+            AllPermutations.add(permutation);
             i++;
         }
-        return permutations;
+        return AllPermutations;
     }
 
 

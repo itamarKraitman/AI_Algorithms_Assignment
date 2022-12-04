@@ -8,10 +8,11 @@ public class Ex1 {
     public static void main(String[] args) {
 //        String version = System.getProperty("java.version");
 //        System.out.println("java version: " + version);
-        String networkPath = "src/"; // for reading the net name
+        String networkPath = ""; // for reading the net name
         ArrayList<String> queries = new ArrayList<>();
         try {
-            FileReader fr = new FileReader("src/input.txt");
+            // remember to remove src/ before running from the cmd
+            FileReader fr = new FileReader("input.txt");
             BufferedReader br = new BufferedReader(fr);
             FileWriter fw = new FileWriter("output.txt");
             BufferedWriter bw = new BufferedWriter(fw);

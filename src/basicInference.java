@@ -1,6 +1,12 @@
 import java.util.*;
 
+/**
+ * Implementing probability inference from Bayesian Network according the Law of Total Probability
+ *
+ */
 public class basicInference {
+
+
 
     int additions = 0;
     int multiplications = 0;

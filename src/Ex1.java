@@ -31,7 +31,7 @@ public class Ex1 {
                         result = new basicInference(querySplit[0], network).getSolution();
                         break;
 //                    case "2":
-//                        result = algo2(querySplit[0]);
+//                        result = new variableElimination(querySplit[0], network).getSolution();
 //                        break;
 //                    case "3":
 //                        result = algo3(querySplit[0]);

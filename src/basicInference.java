@@ -6,18 +6,16 @@ import java.util.*;
  */
 public class basicInference {
 
-
-
     int additions = 0;
     int multiplications = 0;
-    double[] solution;
+    private double[] solution;
 
     private final String queryVar;
-    private final String queryTruthValue;
+    private final String queryOutcomeValue;
     private final HashMap<String, BayesianNetworkNode> network;
     private final HashMap<String, BayesianNetworkNode> hidden;
     private final HashMap<String, BayesianNetworkNode> evidence;
-    private final HashMap<String, String> queryVarsTruthValues;
+    private final HashMap<String, String> queryVarsOutcomesValues;
     private double answerInCpt = 0;
 
     /**
@@ -29,24 +27,24 @@ public class basicInference {
     public basicInference(String fullQuery, HashMap<String, BayesianNetworkNode> network) {
         this.network = network;
         // parsing the query
-        queryVarsTruthValues = new HashMap<>();
+        queryVarsOutcomesValues = new HashMap<>();
         evidence = new HashMap<>();
         hidden = new HashMap<>();
         String query = fullQuery.substring(2, fullQuery.indexOf("|")); // B=T
         queryVar = query.substring(0, query.indexOf("=")); // B
-        queryTruthValue = query.substring(query.indexOf("=") + 1); // T
-        queryVarsTruthValues.put(queryVar, queryTruthValue); // insert query value to query values truth value map
+        queryOutcomeValue = query.substring(query.indexOf("=") + 1); // T
+        queryVarsOutcomesValues.put(queryVar, queryOutcomeValue); // insert query value to query values truth value map
         String fullGivens = fullQuery.substring(fullQuery.indexOf("|") + 1);
         List<String> givens = Arrays.asList(fullGivens.split(","));
         // insert all givens
         givens.forEach(varAndTruthGiven -> {
             int equalSignIndex = varAndTruthGiven.indexOf("=");
             evidence.put(varAndTruthGiven.substring(0, equalSignIndex), network.get(varAndTruthGiven.substring(0, equalSignIndex)));
-            queryVarsTruthValues.put(varAndTruthGiven.substring(0, equalSignIndex), varAndTruthGiven.substring(equalSignIndex + 1));
+            queryVarsOutcomesValues.put(varAndTruthGiven.substring(0, equalSignIndex), varAndTruthGiven.substring(equalSignIndex + 1));
         });
         // insert all hidden
         for (String varAndTruthHidden : network.keySet()) {
-            if (!queryVarsTruthValues.containsKey(varAndTruthHidden)) {
+            if (!queryVarsOutcomesValues.containsKey(varAndTruthHidden)) {
                 hidden.put(varAndTruthHidden, network.get(varAndTruthHidden));
             }
         }
@@ -62,9 +60,9 @@ public class basicInference {
         ArrayList<HashMap<String, String>> permutations = isNominator ? findPermutations(false) : findPermutations(true);
         if (isNominator) {
             // add query variable and its query outcome to all the permutations
-            permutations.forEach(permutation -> permutation.put(queryVar, queryTruthValue));
+            permutations.forEach(permutation -> permutation.put(queryVar, queryOutcomeValue));
         } else { // remove all the lines that are in both nominator and denominator in order to not make redundant moves
-            permutations.removeIf(permutation -> permutation.get(queryVar).equals(queryTruthValue));
+            permutations.removeIf(permutation -> permutation.get(queryVar).equals(queryOutcomeValue));
         }
         double result = 0;
         double currentResult = 0;
@@ -127,9 +125,9 @@ public class basicInference {
         while (i < numberOfHiddenOutcomes) {
             HashMap<String, String> permutation = new HashMap<>();
             // add all evidences
-            for (String evi : queryVarsTruthValues.keySet()) {
+            for (String evi : queryVarsOutcomesValues.keySet()) {
                 if (!evi.equals(queryVar))
-                    permutation.put(evi, queryVarsTruthValues.get(evi));
+                    permutation.put(evi, queryVarsOutcomesValues.get(evi));
             }
             int count = 1;
             ArrayList<String> hiddenNames = new ArrayList<>(hidden.keySet());
@@ -167,10 +165,10 @@ public class basicInference {
         // if both conditions above are false- the answer might be in the cpt
         ArrayList<HashMap<String, String>> queryCpt = queryNode.getCpt();
         for (int i = 1; i < queryCpt.size(); i++) {
-            if (!queryCpt.get(i).get(queryVar).equals(queryTruthValue))
+            if (!queryCpt.get(i).get(queryVar).equals(queryOutcomeValue))
                 return false; // if the truth value not equals the answer not in this line
             for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
-                if (!queryVarsTruthValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
+                if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
                     return false;
             }
             // if we did not return false- the answer is in this line

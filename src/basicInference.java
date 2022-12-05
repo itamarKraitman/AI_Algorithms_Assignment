@@ -8,7 +8,7 @@ public class basicInference {
 
     int additions = 0;
     int multiplications = 0;
-    private double[] solution;
+    private final double[] solution;
 
     private final String queryVar;
     private final String queryOutcomeValue;

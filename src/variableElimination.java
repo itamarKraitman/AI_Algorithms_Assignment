@@ -8,10 +8,9 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
 
     int additions = 0;
     int multiplications = 0;
-    private double[] solution;
+    private final double[] solution;
 
     private final String queryVar;
-    private final String queryOutcomeValue;
     private final HashMap<String, BayesianNetworkNode> network;
     private final HashMap<String, BayesianNetworkNode> hidden;
     private final HashMap<String, BayesianNetworkNode> evidence;
@@ -25,7 +24,7 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         hidden = new HashMap<>();
         String query = fullQuery.substring(2, fullQuery.indexOf("|")); // B=T
         queryVar = query.substring(0, query.indexOf("=")); // B
-        queryOutcomeValue = query.substring(query.indexOf("=") + 1); // T
+        String queryOutcomeValue = query.substring(query.indexOf("=") + 1); // T
         queryVarsOutcomesValues.put(queryVar, queryOutcomeValue); // insert query value to query values truth value map
         String fullGivens = fullQuery.substring(fullQuery.indexOf("|") + 1);
         List<String> givens = Arrays.asList(fullGivens.split(","));
@@ -56,52 +55,37 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
      * @return Calculate Variable Elimination
      */
     private double[] calculateVariableElimination() {
-        HashMap<String, BayesianNetworkNode> relevantVariablesNetwork = new HashMap<>();
-        relevantVariablesNetwork.put(queryVar, network.get(queryVar));
-        relevantVariablesNetwork.putAll(evidence);
-        // take only relevant variables
-        for (String var : queryVarsOutcomesValues.keySet()) {
-            for (BayesianNetworkNode hiddenVar : hidden.values()) {
-                if (findIfHiddenRelevant(hiddenVar, network.get(var))) {
-                    relevantVariablesNetwork.put(hiddenVar.getName(), hiddenVar);
-                }
-            }
-        }
-        // notice! relevantVariableNetwork contains ic particular all the relevant cpts for the current query, I'm going to
-        // use it, so I wil not damage the original network.
-
-        //TODO if necessary
-//        // for query and evidence vars: keep only lines in the cpt with the right outcome for the query
-//        HashMap<String, ArrayList<HashMap<String, String>>> onlyRelevantLines = new HashMap<>();
-//        for (String queryVar : queryVarsOutcomesValues.keySet()) {
-//            ArrayList<HashMap<String, String>> relevantLines = new ArrayList<>();
-//            for (HashMap<String, String> line : relevantVariablesNetwork.get(queryVar).getCpt()) {
-//                if (line.get(queryVar))
+        HashMap<String, BayesianNetworkNode> relevantVariablesNetwork = findRelevantVariables();
+//        relevantVariablesNetwork.put(queryVar, network.get(queryVar));
+//        relevantVariablesNetwork.putAll(evidence);
+//        // take only relevant variables
+//        for (String var : queryVarsOutcomesValues.keySet()) {
+//            for (BayesianNetworkNode hiddenVar : hidden.values()) {
+//                if (findIfHiddenRelevant(hiddenVar, network.get(var))) {
+//                    relevantVariablesNetwork.put(hiddenVar.getName(), hiddenVar);
+//                }
 //            }
 //        }
+        // notice! relevantVariableNetwork contains in particular all the relevant cpts for the current query, I'm going to
+        // use it, so I wil not damage the original network.
 
 
-        // for each hidden, join and eliminate its factors
+        // for query and evidence vars: keep only lines in the cpt with the right outcome for the query
+        HashMap<String, ArrayList<HashMap<String, String>>> onlyRelevantLines = findRelevantLines(relevantVariablesNetwork);
+
         for (BayesianNetworkNode hiddenVar : hidden.values()) {
-            ArrayList<ArrayList<HashMap<String, String>>> hiddenFactors = new ArrayList<>();
 
-            // collect all the factors which contain hiddenVar
-            for (String var : relevantVariablesNetwork.keySet()) {
-                ArrayList<HashMap<String, String>> varCpt = relevantVariablesNetwork.get(var).getCpt();
-                if (var.equals(hiddenVar.getName())) hiddenFactors.add(varCpt); // if var is the hidden var
-                else if (varCpt.get(0).containsKey(hiddenVar.getName())) { // if hidden is evidence of the current var
-                    hiddenFactors.add(varCpt);
-                }
-            }
+            // find all the hidden factors
+            ArrayList<ArrayList<HashMap<String, String>>> hiddenFactors = collectAllHiddenFactors(hiddenVar, onlyRelevantLines);
 
-            // sort factors according size, for factor with same size according ASCII values
+            // sort the factors
             hiddenFactors.sort(this);
 
             // join all hidden factors until there is only one
-            ArrayList<HashMap<String, String>> hiddenFactorAfterJoin = join(hiddenVar, hiddenFactors);
+            ArrayList<ArrayList<HashMap<String, String>>> hiddenFactorAfterJoin = join(hiddenVar, hiddenFactors);
 
             // eliminate hidden
-            ArrayList<HashMap<String, String>> hiddenFactorAfterEliminate = eliminate(hiddenVar, hiddenFactorAfterJoin);
+            ArrayList<ArrayList<HashMap<String, String>>> hiddenFactorAfterEliminate = eliminate(hiddenVar, hiddenFactorAfterJoin);
 
             // delete the factor if it's one value
 
@@ -113,25 +97,10 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
     }
 
     /**
-     * @return Only relevant variables for the query
-     */
-    private boolean findIfHiddenRelevant(BayesianNetworkNode hiddenVar, BayesianNetworkNode queryVar) {
-        // recursively find if the hidden var is ancestor of the query/evidence var
-        if (hiddenVar.getName().equals(queryVar.getName())) return true;
-        for (BayesianNetworkNode hid : queryVar.getEvidences()) {
-            if (findIfHiddenRelevant(hiddenVar, hid)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
-    /**
      * @param hiddenToJoin Hidden variable to join
      * @return the joined factor
      */
-    private ArrayList<HashMap<String, String>> join(BayesianNetworkNode hiddenToJoin, ArrayList<ArrayList<HashMap<String, String>>> hiddenFactors) {
+    private ArrayList<ArrayList<HashMap<String, String>>> join(BayesianNetworkNode hiddenToJoin, ArrayList<ArrayList<HashMap<String, String>>> hiddenFactors) {
         // joining hidden factors until only one factor left
         while (hiddenFactors.size() > 1) {
             ArrayList<HashMap<String, String>> firstFactor = hiddenFactors.get(0);
@@ -162,32 +131,124 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
                     for (String key : variablesPresentInBoth) {
                         if (!firstFactorLine.get(key).equals(secondFactorLine.get(key))) {
                             linesMatches = false;
-                            break;
                         }
                     }
-                    HashMap<String, String> newFactorLine = new HashMap<>();
-                    // add all keys to the line, common variables outcomes are equal so no need to check again
-                    for (String key : firstFactorLine.keySet())
-                        newFactorLine.put(key, firstFactorLine.get(key));
-                    secondFactorLine.keySet().forEach(key -> newFactorLine.put(key, secondFactorLine.get(key)));
-                    // calculate the probability and put it in the new line
-                    double multiplyProbability = Double.parseDouble(firstFactorLine.get("prob")) * Double.parseDouble(secondFactorLine.get("prob"));
-                    newFactorLine.put("prob", String.valueOf(multiplyProbability));
-                    multiplications++;
-                    newFactor.add(newFactorLine);
+                    if (linesMatches) {
+                        HashMap<String, String> newFactorLine = new HashMap<>();
+                        // add all keys to the line, common variables outcomes are equal so no need to check again
+                        for (String key : firstFactorLine.keySet())
+                            newFactorLine.put(key, firstFactorLine.get(key));
+                        secondFactorLine.keySet().forEach(key -> newFactorLine.put(key, secondFactorLine.get(key)));
+                        // calculate the probability and put it in the new line
+                        double multiplyProbability = Double.parseDouble(firstFactorLine.get("prob")) * Double.parseDouble(secondFactorLine.get("prob"));
+                        newFactorLine.put("prob", String.valueOf(multiplyProbability));
+                        multiplications++;
+                        newFactor.add(newFactorLine);
+                    }
                 }
             }
+            hiddenFactors.remove(firstFactor);
+            hiddenFactors.remove(secondFactor);
+            hiddenFactors.add(newFactor);
+            hiddenFactors.sort(this);
 
         }
-        return null;
+        return hiddenFactors;
     }
 
     /**
-     * @param hiddenToEliminate Hidden variable to eliminate
+     * @param hiddenToEliminate  Hidden variable to eliminate
+     * @param hiddenJoinedFactor
      * @return the joined hidden factor after eliminating the hidden
      */
-    private ArrayList<HashMap<String, String>> eliminate(BayesianNetworkNode hiddenToEliminate, ArrayList<HashMap<String, String>> hiddenJoinedFactor) {
+    private ArrayList<ArrayList<HashMap<String, String>>> eliminate(BayesianNetworkNode hiddenToEliminate, ArrayList<ArrayList<HashMap<String, String>>> hiddenJoinedFactor) {
         return null;
+    }
+
+
+    /**
+     * @return only relevant variables for the query
+     */
+    private HashMap<String, BayesianNetworkNode> findRelevantVariables() {
+        HashMap<String, BayesianNetworkNode> relevantVariablesNetwork = new HashMap<>();
+        relevantVariablesNetwork.put(queryVar, network.get(queryVar));
+        relevantVariablesNetwork.putAll(evidence);
+        // take only relevant variables
+        for (String var : queryVarsOutcomesValues.keySet()) {
+            for (BayesianNetworkNode hiddenVar : hidden.values()) {
+                if (findIfHiddenRelevant(hiddenVar, network.get(var))) {
+                    relevantVariablesNetwork.put(hiddenVar.getName(), hiddenVar);
+                }
+            }
+        }
+        return relevantVariablesNetwork;
+    }
+
+    /**
+     * @param hiddenVar         hidden var to find its factors
+     * @param onlyRelevantLines factors collection to find the relevant from
+     * @return all the relevant factors
+     */
+    private ArrayList<ArrayList<HashMap<String, String>>> collectAllHiddenFactors(BayesianNetworkNode hiddenVar, HashMap<String, ArrayList<HashMap<String, String>>> onlyRelevantLines) {
+        ArrayList<ArrayList<HashMap<String, String>>> hiddenFactors = new ArrayList<>();
+        for (String var : onlyRelevantLines.keySet()) {
+            ArrayList<HashMap<String, String>> varCpt = onlyRelevantLines.get(var);
+            if (var.equals(hiddenVar.getName())) hiddenFactors.add(varCpt); // if var is the hidden var
+            else if (varCpt.get(0).containsKey(hiddenVar.getName())) { // if hidden is evidence of the current var
+                hiddenFactors.add(varCpt);
+            }
+        }
+        return hiddenFactors;
+    }
+
+    /**
+     * @param relevantVariablesNetwork network of the relevant nodes  for the query
+     * @return only relevant lines for each node
+     */
+    private HashMap<String, ArrayList<HashMap<String, String>>> findRelevantLines(HashMap<String, BayesianNetworkNode> relevantVariablesNetwork) {
+        HashMap<String, ArrayList<HashMap<String, String>>> onlyRelevantLines = new HashMap<>();
+        for (String var : relevantVariablesNetwork.keySet()) {
+            ArrayList<HashMap<String, String>> varCpt = relevantVariablesNetwork.get(var).getCpt();
+            ArrayList<HashMap<String, String>> varRelevantLines = new ArrayList<>();
+            varRelevantLines.add(varCpt.get(0));
+            // if var cpt contains evidence var: keep only lines where the outcome of evidence is equal to the evidence outcome in the query outcome
+            boolean containsEvidence = false;
+            for (String evidenceVar : evidence.keySet()) {
+                if (varCpt.get(0).containsKey(evidenceVar)) {
+                    containsEvidence = true;
+                    // if the line is valid, add it to the list
+                    for (HashMap<String, String> line : varCpt) {
+                        if (line.get(evidenceVar).equals(queryVarsOutcomesValues.get(evidenceVar))) {
+                            line.remove(evidenceVar);
+                            varRelevantLines.add(line);
+                        }
+                    }
+                    varRelevantLines.get(0).remove(evidenceVar);
+                }
+            }
+            // if node cpt does not contain any evidence, keep all the lines
+            if (!containsEvidence)
+                onlyRelevantLines.put(var, varCpt);
+            else
+                onlyRelevantLines.put(var, varRelevantLines);
+        }
+        return onlyRelevantLines;
+    }
+
+    /**
+     * @param hiddenVar hidden var to check if relevant
+     * @param queryVar  query var to check if hiddenVar is its ancestor
+     * @return if hiddenVar is relevant for the query
+     */
+    private boolean findIfHiddenRelevant(BayesianNetworkNode hiddenVar, BayesianNetworkNode queryVar) {
+        // recursively find if the hidden var is ancestor of the query/evidence var
+        if (hiddenVar.getName().equals(queryVar.getName())) return true;
+        for (BayesianNetworkNode evidenceVar : queryVar.getEvidences()) {
+            if (findIfHiddenRelevant(hiddenVar, evidenceVar)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
@@ -211,12 +272,5 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         }
     }
 
-//    /**
-//     * @param cpt the cpt to calculate its keys ASCII values
-//     * @return sum of keys ASCII values
-//     */
-//    private int sumAsciiValues(ArrayList<HashMap<String, String>> cpt) {
-//        return
-//    }
 
 }

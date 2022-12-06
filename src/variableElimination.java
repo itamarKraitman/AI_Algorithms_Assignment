@@ -55,22 +55,10 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
      * @return Calculate Variable Elimination
      */
     private double[] calculateVariableElimination() {
+        // find only relevant variables for the query
         HashMap<String, BayesianNetworkNode> relevantVariablesNetwork = findRelevantVariables();
-//        relevantVariablesNetwork.put(queryVar, network.get(queryVar));
-//        relevantVariablesNetwork.putAll(evidence);
-//        // take only relevant variables
-//        for (String var : queryVarsOutcomesValues.keySet()) {
-//            for (BayesianNetworkNode hiddenVar : hidden.values()) {
-//                if (findIfHiddenRelevant(hiddenVar, network.get(var))) {
-//                    relevantVariablesNetwork.put(hiddenVar.getName(), hiddenVar);
-//                }
-//            }
-//        }
-        // notice! relevantVariableNetwork contains in particular all the relevant cpts for the current query, I'm going to
-        // use it, so I wil not damage the original network.
 
-
-        // for query and evidence vars: keep only lines in the cpt with the right outcome for the query
+        // find only the relevant lines for the query in each cpt
         HashMap<String, ArrayList<HashMap<String, String>>> onlyRelevantLines = findRelevantLines(relevantVariablesNetwork);
 
         for (BayesianNetworkNode hiddenVar : hidden.values()) {
@@ -82,11 +70,11 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
             hiddenFactors.sort(this);
 
             // join all hidden factors until there is only one
-            ArrayList<ArrayList<HashMap<String, String>>> hiddenFactorAfterJoin = join(hiddenVar, hiddenFactors);
+            ArrayList<ArrayList<HashMap<String, String>>> hiddenFactorAfterJoin = join(hiddenFactors);
 
             // eliminate hidden
-            ArrayList<ArrayList<HashMap<String, String>>> hiddenFactorAfterEliminate = eliminate(hiddenVar, hiddenFactorAfterJoin);
-
+            ArrayList<HashMap<String, String>> hiddenFactorAfterEliminate = eliminate(hiddenVar, hiddenFactorAfterJoin);
+            System.out.println(1);
             // delete the factor if it's one value
 
 
@@ -97,10 +85,10 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
     }
 
     /**
-     * @param hiddenToJoin Hidden variable to join
+     * @param hiddenFactors the hidden factors which ar needed to e joined
      * @return the joined factor
      */
-    private ArrayList<ArrayList<HashMap<String, String>>> join(BayesianNetworkNode hiddenToJoin, ArrayList<ArrayList<HashMap<String, String>>> hiddenFactors) {
+    private ArrayList<ArrayList<HashMap<String, String>>> join(ArrayList<ArrayList<HashMap<String, String>>> hiddenFactors) {
         // joining hidden factors until only one factor left
         while (hiddenFactors.size() > 1) {
             ArrayList<HashMap<String, String>> firstFactor = hiddenFactors.get(0);
@@ -157,12 +145,52 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
     }
 
     /**
-     * @param hiddenToEliminate  Hidden variable to eliminate
-     * @param hiddenJoinedFactor
+     * @param hiddenToEliminate     Hidden variable to eliminate
+     * @param hiddenEliminateFactor the factor which is need to eliminate hidden from
      * @return the joined hidden factor after eliminating the hidden
      */
-    private ArrayList<ArrayList<HashMap<String, String>>> eliminate(BayesianNetworkNode hiddenToEliminate, ArrayList<ArrayList<HashMap<String, String>>> hiddenJoinedFactor) {
-        return null;
+    private ArrayList<HashMap<String, String>> eliminate(BayesianNetworkNode hiddenToEliminate, ArrayList<ArrayList<HashMap<String, String>>> hiddenEliminateFactor) {
+        ArrayList<HashMap<String, String>> factorAfterElimination = new ArrayList<>();
+        ArrayList<HashMap<String, String>> eliminateFactor = hiddenEliminateFactor.get(0);
+        ArrayList<HashMap<String, String>> linesToRemove = new ArrayList<>();
+        Set<String> keysWithoutHidden = eliminateFactor.get(0).keySet();
+        keysWithoutHidden.remove(hiddenToEliminate.getName());
+        // add all keys to the new factor
+        factorAfterElimination.add(new HashMap<>());
+        keysWithoutHidden.forEach(key -> factorAfterElimination.get(0).put(key, key));
+        // remove the hidden var since it is not needed to be checked
+        keysWithoutHidden.remove(hiddenToEliminate.getName());
+        while (eliminateFactor.size() > 1) {
+            linesToRemove.clear();
+            // for each line, find its match lines where the outcomes of the vars which are not the hidden are equals
+            HashMap<String, String> line = eliminateFactor.get(1); //starting at index 1 to skip the only keys line
+            double sum = Double.parseDouble(line.get("prob"));
+            linesToRemove.add(line);
+            for (int i = 2; i < eliminateFactor.size(); i++) {
+                boolean linesEquals = true;
+                HashMap<String, String> otherLine = eliminateFactor.get(i);
+                for (String key : keysWithoutHidden) {
+                    if (!line.get(key).equals(otherLine.get(key))) { // if other line is not a match, skip to the next line
+                        linesEquals = false;
+                        break;
+                    }
+                }
+                if (linesEquals) { // if other line is a match, add its probability to sum
+                    sum += Double.parseDouble(otherLine.get("prob"));
+                    additions++;
+                    linesToRemove.add(otherLine);
+                }
+            }
+            // after finding all the match lines, add theirs sum to the new factor
+            HashMap<String, String> matchLine = new HashMap<>();
+            for (String key : keysWithoutHidden) { // add all keys and outcomes
+                matchLine.put(key, line.get(key));
+            }
+            matchLine.put("prob", String.valueOf(sum));
+            factorAfterElimination.add(matchLine);
+            eliminateFactor.removeAll(linesToRemove);
+        }
+        return factorAfterElimination;
     }
 
 

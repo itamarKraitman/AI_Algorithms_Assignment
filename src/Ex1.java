@@ -27,9 +27,9 @@ public class Ex1 {
                 double[] result = new double[3];
                 String[] querySplit = query.split("\\),");
                 switch (querySplit[1]) {
-//                    case "1":
-//                        result = new basicInference(querySplit[0], network).getSolution();
-//                        break;
+                    case "1":
+                        result = new basicInference(querySplit[0], network).getSolution();
+                        break;
                     case "2":
                         result = new variableElimination(querySplit[0], network).getSolution();
                         break;

@@ -15,12 +15,54 @@ public class BayesianNetworkNode {
     private ArrayList<HashMap<String, String>> cpt = new ArrayList<>(); // conditional probability table
     private String[] probabilities; // nodes probabilities
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public  BayesianNetworkNode() {
+
+    }
+
+    public void setOutcome(ArrayList<String> outcome) {
+        this.outcome = outcome;
+    }
+
+    public void setEvidence(ArrayList<BayesianNetworkNode> evidence) {
+        this.evidence = evidence;
+    }
+
+    public void setChildren(ArrayList<BayesianNetworkNode> children) {
+        this.children = children;
+    }
+
+    public void setEvidenceNames(ArrayList<String> evidenceNames) {
+        this.evidenceNames = evidenceNames;
+    }
+
+    public void setCpt(ArrayList<HashMap<String, String>> cpt) {
+        this.cpt = cpt;
+    }
+
+    public void setProbabilities(String[] probabilities) {
+        this.probabilities = probabilities;
+    }
+
     public BayesianNetworkNode(String name, ArrayList<String> outcome, ArrayList<String> evidenceNames, String probabilities) {
         this.name = name;
         this.outcome = new ArrayList<>(outcome);
         this.evidenceNames = new ArrayList<>(evidenceNames);
         this.probabilities = probabilities.split(" ");
 
+    }
+
+    public BayesianNetworkNode(BayesianNetworkNode bayesianNetworkNode) {
+        this.name = bayesianNetworkNode.getName();
+        this.outcome = bayesianNetworkNode.getOutcome();
+        this.evidenceNames = bayesianNetworkNode.getEvidenceNames();
+        this.probabilities = bayesianNetworkNode.getProbabilities();
+        this.cpt = bayesianNetworkNode.getCpt();
+        this.evidence = bayesianNetworkNode.getEvidences();
+        this.children = (ArrayList<BayesianNetworkNode>) bayesianNetworkNode.getChildren();
     }
 
     public String getName() {

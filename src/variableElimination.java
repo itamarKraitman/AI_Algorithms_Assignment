@@ -1,3 +1,5 @@
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -76,12 +78,40 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
             ArrayList<HashMap<String, String>> hiddenFactorAfterEliminate = eliminate(hiddenVar, hiddenFactorAfterJoin);
             System.out.println(1);
             // delete the factor if it's one value
-
-
         }
 
+        // after eliminating all hidden vars, join (if necessary) and normalize the query factors to get the final solution
+        double probabilitiesSum = 0;
+        ArrayList<ArrayList<HashMap<String, String>>> queryFactors = new ArrayList<>();
+        for (ArrayList<HashMap<String, String>> factor : onlyRelevantLines.values()) {
+            if (factor.get(0).containsKey(queryVar))
+                queryFactors.add(factor);
+        }
+        // join query factors
+        ArrayList<ArrayList<HashMap<String, String>>> queryFactorAfterJoin = join(queryFactors);
+        // normalize
+        double probabilityForQuery = 0;
+        double probabilityInOutcomeLine = 0;
+        boolean lineWithKeys = true;
+        for (HashMap<String, String> line : queryFactorAfterJoin.get(0)) {
+            if (lineWithKeys) {
+                lineWithKeys = false;
+                continue;
+            }
+            // if this line is not with the query outcome, add its probability to the sum
+            if (!line.get(queryVar).equals(queryVarsOutcomesValues.get(queryVar))) {
+                probabilitiesSum += Double.parseDouble(line.get("prob"));
+            }
+            // if this is the line with the query outcome, keep it to normalize calculation
+            else {
+                probabilityInOutcomeLine = Double.parseDouble(line.get("prob"));
+            }
+        }
+        NumberFormat formatter = new DecimalFormat("#0.00000");
+        double noramlizedProbability = Double.parseDouble(formatter.format(probabilityInOutcomeLine / (probabilitiesSum + probabilityInOutcomeLine)));
+        additions++; // interment by 1 for sum in normalize
+        return new double[]{noramlizedProbability, additions, multiplications};
 
-        return new double[]{0, 0, 0};
     }
 
     /**

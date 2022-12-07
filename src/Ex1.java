@@ -29,9 +29,11 @@ public class Ex1 {
                 switch (querySplit[1]) {
                     case "1":
                         result = new basicInference(querySplit[0], network).getSolution();
+                        System.out.println(1);
                         break;
                     case "2":
                         result = new variableElimination(querySplit[0], network).getSolution();
+                        System.out.println(1);
                         break;
 //                    case "3":
 //                        result = algo3(querySplit[0]);

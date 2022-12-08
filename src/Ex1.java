@@ -32,12 +32,12 @@ public class Ex1 {
                         System.out.println(1);
                         break;
                     case "2":
-                        result = new variableElimination(querySplit[0], network).getSolution();
+                        result = new variableElimination(querySplit[0], network, true).getSolution();
                         System.out.println(1);
                         break;
-//                    case "3":
-//                        result = algo3(querySplit[0]);
-//                        break;
+                    case "3":
+                        result = new variableElimination(querySplit[0], network, false).getSolution();
+                        break;
                 }
                 answer += (result[0] + "," + (int) result[1] + "," + (int) result[2]);
                 bw.write(answer+"\n");

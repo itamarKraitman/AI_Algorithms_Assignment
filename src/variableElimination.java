@@ -11,6 +11,7 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
     int additions = 0;
     int multiplications = 0;
     private final double[] solution;
+    private boolean secondfOrThirdAlgo;
 
     private final String queryVar;
     private final HashMap<String, BayesianNetworkNode> network;
@@ -19,8 +20,9 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
     private final HashMap<String, String> queryVarsOutcomesValues;
     private double answerInCpt;
 
-    public variableElimination(String fullQuery, HashMap<String, BayesianNetworkNode> network) {
+    public variableElimination(String fullQuery, HashMap<String, BayesianNetworkNode> network, Boolean secondOrThirdAlgo) {
         this.network = network;
+        this.secondfOrThirdAlgo = secondOrThirdAlgo;
         queryVarsOutcomesValues = new HashMap<>();
         evidence = new HashMap<>();
         hidden = new HashMap<>();
@@ -61,7 +63,7 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         NumberFormat formatter = new DecimalFormat("#0.00000");
 
         if (isInCpt()) { // if the answer is in the cpt, no need to make any calculation
-            return new double[] {Double.parseDouble(formatter.format(answerInCpt)), 0, 0};
+            return new double[]{Double.parseDouble(formatter.format(answerInCpt)), 0, 0};
         }
 
         // find only relevant variables for the query
@@ -78,8 +80,11 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
 
                 onlyRelevantLines.removeAll(hiddenFactors);
 
-                // sort the factors
-                hiddenFactors.sort(this);
+                if (secondfOrThirdAlgo)
+                    // sort the factors
+                    hiddenFactors.sort(this);
+                else
+                {}
 
                 // join all hidden factors until there is only one
                 ArrayList<ArrayList<HashMap<String, String>>> hiddenFactorAfterJoin = join(hiddenFactors);
@@ -95,18 +100,31 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         }
 
         // after eliminating all hidden vars, join (if necessary) and normalize the query factors to get the final solution
-        double probabilitiesSum = 0;
+
+        // fina all query factors and join them
         ArrayList<ArrayList<HashMap<String, String>>> queryFactors = new ArrayList<>();
         for (ArrayList<HashMap<String, String>> factor : onlyRelevantLines) {
-            if (factor.get(0).containsKey(queryVar))
+            if (factor.get(0).containsKey(queryVar)) {
                 queryFactors.add(factor);
+            }
         }
-        // join query factors
         ArrayList<ArrayList<HashMap<String, String>>> queryFactorAfterJoin = join(queryFactors);
+
         // normalize
-        double probabilityForQuery = 0;
+        double normalizedProbability = normalizeProbability(queryFactorAfterJoin);
+
+        return new double[]{Double.parseDouble(formatter.format(normalizedProbability)), additions, multiplications};
+
+    }
+
+    /**
+     * @param queryFactorAfterJoin query factor after the join method, the answer is extract from it
+     * @return the answer
+     */
+    private double normalizeProbability(ArrayList<ArrayList<HashMap<String, String>>> queryFactorAfterJoin) {
         double probabilityInOutcomeLine = 0;
         boolean lineWithKeys = true;
+        double probabilitiesSum = 0;
         for (HashMap<String, String> line : queryFactorAfterJoin.get(0)) {
             if (lineWithKeys) {
                 lineWithKeys = false;
@@ -121,10 +139,10 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
                 probabilityInOutcomeLine = Double.parseDouble(line.get("prob"));
             }
         }
-        double noramlizedProbability = Double.parseDouble(formatter.format(probabilityInOutcomeLine / (probabilitiesSum + probabilityInOutcomeLine)));
+        double normalizedProbability = probabilityInOutcomeLine / (probabilitiesSum + probabilityInOutcomeLine);
         additions++; // interment by 1 for sum in normalize
-        return new double[]{noramlizedProbability, additions, multiplications};
 
+        return normalizedProbability;
     }
 
     /**
@@ -266,14 +284,6 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
             if (factor.get(0).containsKey(hiddenVar.getName()))
                 hiddenFactors.add(factor);
         }
-//            for (String var : onlyRelevantLines) {
-//                ArrayList<HashMap<String, String>> varCpt = onlyRelevantLines.get(var);
-//                if (var.equals(hiddenVar.getName())) hiddenFactors.add(varCpt); // if var is the hidden var
-//                else if (varCpt.get(0).containsKey(hiddenVar.getName())) { // if hidden is evidence of the current var
-//                    hiddenFactors.add(varCpt);
-//                }
-//            }
-//        }
         return hiddenFactors;
     }
 
@@ -368,10 +378,10 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         for (int i = 1; i < queryCpt.size(); i++) {
             if (!queryCpt.get(i).get(queryVar).equals(queryVarsOutcomesValues.get(queryVar)))
                 return false; // if the outcomes are not equals, the answer is not in this line
-                for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
-                    if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
-                        return false;
-                }
+            for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
+                if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
+                    return false;
+            }
             // if we did not return false- the answer is in this line
             this.answerInCpt = Double.parseDouble(queryCpt.get(i).get("prob"));
         }

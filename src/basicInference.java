@@ -175,6 +175,7 @@ public class basicInference {
             }
             // if we did not return false- the answer is in this line
             answerInCpt = Double.parseDouble(queryCpt.get(i).get("prob"));
+            break;
         }
         return true;
     }

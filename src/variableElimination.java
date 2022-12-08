@@ -378,15 +378,16 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         for (int i = 1; i < queryCpt.size(); i++) {
             if (!queryCpt.get(i).get(queryVar).equals(queryVarsOutcomesValues.get(queryVar)))
                 return false; // if the outcomes are not equals, the answer is not in this line
-            for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
-                if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
-                    return false;
+            else {
+                for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
+                    if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
+                        return false;
+                }
             }
             // if we did not return false- the answer is in this line
             this.answerInCpt = Double.parseDouble(queryCpt.get(i).get("prob"));
+            break;
         }
         return true;
     }
-
-
 }

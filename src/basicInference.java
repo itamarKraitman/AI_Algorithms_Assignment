@@ -166,10 +166,12 @@ public class basicInference {
         ArrayList<HashMap<String, String>> queryCpt = queryNode.getCpt();
         for (int i = 1; i < queryCpt.size(); i++) {
             if (!queryCpt.get(i).get(queryVar).equals(queryOutcomeValue))
-                return false; // if the truth value not equals the answer not in this line
-            for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
-                if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
-                    return false;
+                return false; // if the outcomes are not equals, the answer is not in this line
+            else {
+                for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
+                    if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
+                        return false;
+                }
             }
             // if we did not return false- the answer is in this line
             answerInCpt = Double.parseDouble(queryCpt.get(i).get("prob"));

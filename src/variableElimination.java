@@ -17,7 +17,7 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
     private final HashMap<String, BayesianNetworkNode> hidden;
     private final HashMap<String, BayesianNetworkNode> evidence;
     private final HashMap<String, String> queryVarsOutcomesValues;
-    private double answerInCpt = 0;
+    private double answerInCpt;
 
     public variableElimination(String fullQuery, HashMap<String, BayesianNetworkNode> network) {
         this.network = network;
@@ -57,6 +57,13 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
      * @return Calculate Variable Elimination
      */
     private double[] calculateVariableElimination() {
+
+        NumberFormat formatter = new DecimalFormat("#0.00000");
+
+        if (isInCpt()) { // if the answer is in the cpt, no need to make any calculation
+            return new double[] {Double.parseDouble(formatter.format(answerInCpt)), 0, 0};
+        }
+
         // find only relevant variables for the query
         HashMap<String, BayesianNetworkNode> relevantVariablesNetwork = findRelevantVariables();
 
@@ -114,7 +121,6 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
                 probabilityInOutcomeLine = Double.parseDouble(line.get("prob"));
             }
         }
-        NumberFormat formatter = new DecimalFormat("#0.00000");
         double noramlizedProbability = Double.parseDouble(formatter.format(probabilityInOutcomeLine / (probabilitiesSum + probabilityInOutcomeLine)));
         additions++; // interment by 1 for sum in normalize
         return new double[]{noramlizedProbability, additions, multiplications};
@@ -340,6 +346,36 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
             if (firstCptAsciiSum > secondCptAsciiSum) return 1;
             else return -1;
         }
+    }
+
+    /**
+     * @return True if the answer for the query is in the cpt, false otherwise
+     */
+    private boolean isInCpt() {
+        BayesianNetworkNode queryNode = network.get(queryVar);
+        // if the evidences vars are not given vars || given vars are not in evidence vars- the answer not in the cpt
+        for (String evidence : evidence.keySet()) {
+            if (!queryNode.getEvidenceNames().contains(evidence)) {
+                return false;
+            }
+        }
+        for (String evidenceVar : queryNode.getEvidenceNames()) {
+            if (!evidence.containsKey(evidenceVar))
+                return false;
+        }
+        // if both conditions above are false- the answer might be in the cpt
+        ArrayList<HashMap<String, String>> queryCpt = queryNode.getCpt();
+        for (int i = 1; i < queryCpt.size(); i++) {
+            if (!queryCpt.get(i).get(queryVar).equals(queryVarsOutcomesValues.get(queryVar)))
+                return false; // if the outcomes are not equals, the answer is not in this line
+                for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
+                    if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
+                        return false;
+                }
+            // if we did not return false- the answer is in this line
+            this.answerInCpt = Double.parseDouble(queryCpt.get(i).get("prob"));
+        }
+        return true;
     }
 
 

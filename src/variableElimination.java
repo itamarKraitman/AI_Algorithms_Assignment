@@ -61,29 +61,36 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         HashMap<String, BayesianNetworkNode> relevantVariablesNetwork = findRelevantVariables();
 
         // find only the relevant lines for the query in each cpt
-        HashMap<String, ArrayList<HashMap<String, String>>> onlyRelevantLines = findRelevantLines(relevantVariablesNetwork);
+        ArrayList<ArrayList<HashMap<String, String>>> onlyRelevantLines = findRelevantLines(relevantVariablesNetwork);
 
         for (BayesianNetworkNode hiddenVar : hidden.values()) {
 
             // find all the hidden factors
             ArrayList<ArrayList<HashMap<String, String>>> hiddenFactors = collectAllHiddenFactors(hiddenVar, onlyRelevantLines);
+            if (hiddenFactors.size() > 0) {
 
-            // sort the factors
-            hiddenFactors.sort(this);
+                onlyRelevantLines.removeAll(hiddenFactors);
 
-            // join all hidden factors until there is only one
-            ArrayList<ArrayList<HashMap<String, String>>> hiddenFactorAfterJoin = join(hiddenFactors);
+                // sort the factors
+                hiddenFactors.sort(this);
 
-            // eliminate hidden
-            ArrayList<HashMap<String, String>> hiddenFactorAfterEliminate = eliminate(hiddenVar, hiddenFactorAfterJoin);
-            System.out.println(1);
-            // delete the factor if it's one value
+                // join all hidden factors until there is only one
+                ArrayList<ArrayList<HashMap<String, String>>> hiddenFactorAfterJoin = join(hiddenFactors);
+
+                // eliminate hidden
+                ArrayList<HashMap<String, String>> hiddenFactorAfterEliminate = eliminate(hiddenVar, hiddenFactorAfterJoin);
+
+                // delete the factor if it's one value
+                if (hiddenFactorAfterEliminate.size() > 2) { // if contains only one line of probability (two with keys line), discard it
+                    onlyRelevantLines.add(hiddenFactorAfterEliminate);
+                }
+            }
         }
 
         // after eliminating all hidden vars, join (if necessary) and normalize the query factors to get the final solution
         double probabilitiesSum = 0;
         ArrayList<ArrayList<HashMap<String, String>>> queryFactors = new ArrayList<>();
-        for (ArrayList<HashMap<String, String>> factor : onlyRelevantLines.values()) {
+        for (ArrayList<HashMap<String, String>> factor : onlyRelevantLines) {
             if (factor.get(0).containsKey(queryVar))
                 queryFactors.add(factor);
         }
@@ -247,15 +254,20 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
      * @param onlyRelevantLines factors collection to find the relevant from
      * @return all the relevant factors
      */
-    private ArrayList<ArrayList<HashMap<String, String>>> collectAllHiddenFactors(BayesianNetworkNode hiddenVar, HashMap<String, ArrayList<HashMap<String, String>>> onlyRelevantLines) {
+    private ArrayList<ArrayList<HashMap<String, String>>> collectAllHiddenFactors(BayesianNetworkNode hiddenVar, ArrayList<ArrayList<HashMap<String, String>>> onlyRelevantLines) {
         ArrayList<ArrayList<HashMap<String, String>>> hiddenFactors = new ArrayList<>();
-        for (String var : onlyRelevantLines.keySet()) {
-            ArrayList<HashMap<String, String>> varCpt = onlyRelevantLines.get(var);
-            if (var.equals(hiddenVar.getName())) hiddenFactors.add(varCpt); // if var is the hidden var
-            else if (varCpt.get(0).containsKey(hiddenVar.getName())) { // if hidden is evidence of the current var
-                hiddenFactors.add(varCpt);
-            }
+        for (ArrayList<HashMap<String, String>> factor : onlyRelevantLines) {
+            if (factor.get(0).containsKey(hiddenVar.getName()))
+                hiddenFactors.add(factor);
         }
+//            for (String var : onlyRelevantLines) {
+//                ArrayList<HashMap<String, String>> varCpt = onlyRelevantLines.get(var);
+//                if (var.equals(hiddenVar.getName())) hiddenFactors.add(varCpt); // if var is the hidden var
+//                else if (varCpt.get(0).containsKey(hiddenVar.getName())) { // if hidden is evidence of the current var
+//                    hiddenFactors.add(varCpt);
+//                }
+//            }
+//        }
         return hiddenFactors;
     }
 
@@ -263,8 +275,8 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
      * @param relevantVariablesNetwork network of the relevant nodes  for the query
      * @return only relevant lines for each node
      */
-    private HashMap<String, ArrayList<HashMap<String, String>>> findRelevantLines(HashMap<String, BayesianNetworkNode> relevantVariablesNetwork) {
-        HashMap<String, ArrayList<HashMap<String, String>>> onlyRelevantLines = new HashMap<>();
+    private ArrayList<ArrayList<HashMap<String, String>>> findRelevantLines(HashMap<String, BayesianNetworkNode> relevantVariablesNetwork) {
+        ArrayList<ArrayList<HashMap<String, String>>> onlyRelevantLines = new ArrayList<>();
         for (String var : relevantVariablesNetwork.keySet()) {
             ArrayList<HashMap<String, String>> varCpt = relevantVariablesNetwork.get(var).getCpt();
             ArrayList<HashMap<String, String>> varRelevantLines = new ArrayList<>();
@@ -277,18 +289,18 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
                     // if the line is valid, add it to the list
                     for (HashMap<String, String> line : varCpt) {
                         if (line.get(evidenceVar).equals(queryVarsOutcomesValues.get(evidenceVar))) {
-                            line.remove(evidenceVar);
+//                            line.remove(evidenceVar);
                             varRelevantLines.add(line);
                         }
                     }
-                    varRelevantLines.get(0).remove(evidenceVar);
+//                    varRelevantLines.get(0).remove(evidenceVar);
                 }
             }
             // if node cpt does not contain any evidence, keep all the lines
             if (!containsEvidence)
-                onlyRelevantLines.put(var, varCpt);
+                onlyRelevantLines.add(varCpt);
             else
-                onlyRelevantLines.put(var, varRelevantLines);
+                onlyRelevantLines.add(varRelevantLines);
         }
         return onlyRelevantLines;
     }

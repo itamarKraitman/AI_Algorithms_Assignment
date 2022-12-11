@@ -1,3 +1,4 @@
+import java.security.KeyStore;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.*;
@@ -49,10 +50,25 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         if (secondfOrThirdAlgo) {
             // sort hidden in alphabetical order
             ArrayList<String> sortedKeys = new ArrayList<>(hidden.keySet());
+            Collections.sort(sortedKeys);
             sortedKeys.forEach(key -> hiddenSorted.put(key, hidden.get(key)));
-        }
-        else { // sort by heuristic
-
+        } else { // sort by heuristic- "min-degree", the smallest number of neighbours
+            ArrayList<Integer> sortedValues = new ArrayList<>();
+            for (BayesianNetworkNode hid : hidden.values()) {
+                sortedValues.add(hid.getEvidences().size() + hid.getChildren().size());
+            }
+            Collections.sort(sortedValues);
+            Set<String> keysFound = new HashSet<>();
+            for (Integer value : sortedValues) {
+                for (String key : hidden.keySet()) {
+                    int numberOfNeighbours = hidden.get(key).getEvidences().size() + hidden.get(key).getChildren().size();
+                    if (numberOfNeighbours == value && !keysFound.contains(key)) {
+                        hiddenSorted.put(key, hidden.get(key));
+                        keysFound.add(key);
+                        break;
+                    }
+                }
+            }
         }
 
         solution = calculateVariableElimination();
@@ -353,16 +369,16 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
      */
     @Override
     public int compare(ArrayList<HashMap<String, String>> firstCpt, ArrayList<HashMap<String, String>> secondCpt) {
-            // first sort by size
-            if (firstCpt.size() > secondCpt.size()) return 1;
-            if (firstCpt.size() < secondCpt.size()) return -1;
-            else {
-                // if sizes are equal, sort by ASCII
-                int firstCptAsciiSum = firstCpt.get(0).keySet().stream().mapToInt(key -> key.charAt(0)).sum();
-                int secondCptAsciiSum = secondCpt.get(0).keySet().stream().mapToInt(key -> key.charAt(0)).sum();
-                if (firstCptAsciiSum > secondCptAsciiSum) return 1;
-                else return -1;
-            }
+        // first sort by size
+        if (firstCpt.size() > secondCpt.size()) return 1;
+        if (firstCpt.size() < secondCpt.size()) return -1;
+        else {
+            // if sizes are equal, sort by ASCII
+            int firstCptAsciiSum = firstCpt.get(0).keySet().stream().mapToInt(key -> key.charAt(0)).sum();
+            int secondCptAsciiSum = secondCpt.get(0).keySet().stream().mapToInt(key -> key.charAt(0)).sum();
+            if (firstCptAsciiSum > secondCptAsciiSum) return 1;
+            else return -1;
+        }
     }
 
     /**

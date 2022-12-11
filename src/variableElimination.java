@@ -52,17 +52,21 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
             ArrayList<String> sortedKeys = new ArrayList<>(hidden.keySet());
             Collections.sort(sortedKeys);
             sortedKeys.forEach(key -> hiddenSorted.put(key, hidden.get(key)));
-        } else { // sort by heuristic- "min-degree", the smallest number of neighbours
+        } else { // sort by heuristic- "min-degree", the smallest number of neighbours. Explanation in attached docs file
             ArrayList<Integer> sortedValues = new ArrayList<>();
-            for (BayesianNetworkNode hid : hidden.values()) {
+            for (BayesianNetworkNode hid : hidden.values()) { // collect number of neighbours of each hidden
                 sortedValues.add(hid.getEvidences().size() + hid.getChildren().size());
             }
+            // sort the numbers of neighbours, and put in sortedHidden the hidden in increasing order according number of neighbours
             Collections.sort(sortedValues);
+            // if key found, put it in this set in order to not put this key again in case there are more than one appearance of this value
             Set<String> keysFound = new HashSet<>();
+            ArrayList<String> hiddenKeySet = new ArrayList<>(hidden.keySet());
+            Collections.sort(hiddenKeySet);
             for (Integer value : sortedValues) {
-                for (String key : hidden.keySet()) {
+                for (String key : hiddenKeySet) {
                     int numberOfNeighbours = hidden.get(key).getEvidences().size() + hidden.get(key).getChildren().size();
-                    if (numberOfNeighbours == value && !keysFound.contains(key)) {
+                    if (numberOfNeighbours == value && !keysFound.contains(key)) { // if this key is already found, no need to put it again
                         hiddenSorted.put(key, hidden.get(key));
                         keysFound.add(key);
                         break;
@@ -70,6 +74,7 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
                 }
             }
         }
+
 
         solution = calculateVariableElimination();
     }

@@ -8,11 +8,11 @@ public class Ex1 {
     public static void main(String[] args) {
 //        String version = System.getProperty("java.version");
 //        System.out.println("java version: " + version);
-        String networkPath = "src/"; // for reading the net name
+        String networkPath = ""; // for reading the net name
         ArrayList<String> queries = new ArrayList<>();
         try {
             // remember to remove src/ before running from the cmd
-            FileReader fr = new FileReader("src/input2");
+            FileReader fr = new FileReader("input.txt");
             BufferedReader br = new BufferedReader(fr);
             FileWriter fw = new FileWriter("output.txt");
             BufferedWriter bw = new BufferedWriter(fw);
@@ -29,15 +29,12 @@ public class Ex1 {
                 switch (querySplit[1]) {
                     case "1":
                         result = new basicInference(querySplit[0], network).getSolution();
-                        System.out.println(1);
                         break;
                     case "2":
                         result = new variableElimination(querySplit[0], network, true).getSolution();
-                        System.out.println(1);
                         break;
                     case "3":
                         result = new variableElimination(querySplit[0], network, false).getSolution();
-                        System.out.println(1);
                         break;
                 }
                 answer += (result[0] + "," + (int) result[1] + "," + (int) result[2]);

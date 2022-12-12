@@ -2,7 +2,6 @@ import java.util.*;
 
 /**
  * Implementing probability inference from Bayesian Network according the Law of Total Probability
- *
  */
 public class basicInference {
 
@@ -164,18 +163,18 @@ public class basicInference {
         }
         // if both conditions above are false- the answer might be in the cpt
         ArrayList<HashMap<String, String>> queryCpt = queryNode.getCpt();
-        for (int i = 1; i < queryCpt.size(); i++) {
-            if (!queryCpt.get(i).get(queryVar).equals(queryOutcomeValue))
-                return false; // if the outcomes are not equals, the answer is not in this line
-            else {
-                for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
-                    if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(queryCpt.get(i).get(evidenceVar.getName())))
-                        return false;
-                }
+        // check each line in the cpt if the answer is in the line. if true, save the answer, else return false and check with the algorithm
+        for (HashMap<String, String> line : queryCpt) {
+            boolean linesNotEquals = line.get(queryVar).equals(queryVarsOutcomesValues.get(queryVar));
+            for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
+                if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(line.get(evidenceVar.getName())))
+                    linesNotEquals = false;
             }
-            // if we did not return false- the answer is in this line
-            answerInCpt = Double.parseDouble(queryCpt.get(i).get("prob"));
-            break;
+            if (linesNotEquals) {
+                // if we did not return false- the answer is in this line
+                this.answerInCpt = Double.parseDouble(line.get("prob"));
+                break; // the answer was found so no need to check anymore
+            }
         }
         return true;
     }

@@ -402,18 +402,18 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         }
         // if both conditions above are false- the answer might be in the cpt
         ArrayList<HashMap<String, String>> queryCpt = queryNode.getCpt();
+        // check each line in the cpt if the answer is in the line. if true, save the answer, else return false and check with the algorithm
         for (HashMap<String, String> line : queryCpt) {
-            if (!line.get(queryVar).equals(queryVarsOutcomesValues.get(queryVar)))
-                return false; // if the outcomes are not equals, the answer is not in this line
-            else {
-                for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
-                    if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(line.get(evidenceVar.getName())))
-                        return false;
-                }
+            boolean linesNotEquals = line.get(queryVar).equals(queryVarsOutcomesValues.get(queryVar));
+            for (BayesianNetworkNode evidenceVar : queryNode.getEvidences()) {
+                if (!queryVarsOutcomesValues.get(evidenceVar.getName()).equals(line.get(evidenceVar.getName())))
+                    linesNotEquals = false;
             }
-            // if we did not return false- the answer is in this line
-            this.answerInCpt = Double.parseDouble(line.get("prob"));
-            break; // the answer was found so no need to check anymore
+            if (linesNotEquals) {
+                // if we did not return false- the answer is in this line
+                this.answerInCpt = Double.parseDouble(line.get("prob"));
+                break; // the answer was found so no need to check anymore
+            }
         }
         return true;
     }

@@ -12,7 +12,7 @@ public class Ex1 {
         ArrayList<String> queries = new ArrayList<>();
         try {
             // remember to remove src/ before running from the cmd
-            FileReader fr = new FileReader("input.txt");
+            FileReader fr = new FileReader("input2.txt");
             BufferedReader br = new BufferedReader(fr);
             FileWriter fw = new FileWriter("output.txt");
             BufferedWriter bw = new BufferedWriter(fw);

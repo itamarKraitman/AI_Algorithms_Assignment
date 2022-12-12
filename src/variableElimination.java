@@ -12,7 +12,6 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
     int additions = 0;
     int multiplications = 0;
     private final double[] solution;
-    private boolean secondfOrThirdAlgo;
 
     private final String queryVar;
     private final HashMap<String, BayesianNetworkNode> network;
@@ -23,7 +22,7 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
 
     public variableElimination(String fullQuery, HashMap<String, BayesianNetworkNode> network, Boolean secondOrThirdAlgo) {
         this.network = network;
-        this.secondfOrThirdAlgo = secondOrThirdAlgo; // is second or third algorithm
+        boolean isSecondAlgo = secondOrThirdAlgo; // is second or third algorithm
         queryVarsOutcomesValues = new HashMap<>();
         evidence = new HashMap<>();
         HashMap<String, BayesianNetworkNode> hidden = new LinkedHashMap<>();
@@ -47,7 +46,7 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
         }
         // sort hidden by ABC or by my heuristic logic according the algorithm which is used
         hiddenSorted = new LinkedHashMap<>();
-        if (secondfOrThirdAlgo) {
+        if (isSecondAlgo) {
             // sort hidden in alphabetical order
             ArrayList<String> sortedKeys = new ArrayList<>(hidden.keySet());
             Collections.sort(sortedKeys);
@@ -62,7 +61,7 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
             // if key found, put it in this set in order to not put this key again in case there are more than one appearance of this value
             Set<String> keysFound = new HashSet<>();
             ArrayList<String> hiddenKeySet = new ArrayList<>(hidden.keySet());
-            Collections.sort(hiddenKeySet);
+            Collections.sort(hiddenKeySet); // sort according ABC, for cases where some variables have the same number of neighbors
             for (Integer value : sortedValues) {
                 for (String key : hiddenKeySet) {
                     int numberOfNeighbours = hidden.get(key).getEvidences().size() + hidden.get(key).getChildren().size();

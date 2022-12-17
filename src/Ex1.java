@@ -12,8 +12,8 @@ public class Ex1 {
         String networkPath = ""; // for cmd
         try {
             // remember to remove src/ before running from the cmd
-//            FileReader fr = new FileReader("src/input2.txt"); // dor debug
-            FileReader fr = new FileReader("input2.txt"); // for cmd
+//            FileReader fr = new FileReader("src/input.txt"); // dor debug
+            FileReader fr = new FileReader("input.txt"); // for cmd
             BufferedReader br = new BufferedReader(fr);
             FileWriter fw = new FileWriter("output.txt");
             BufferedWriter bw = new BufferedWriter(fw);

@@ -396,7 +396,7 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
                 return false;
             }
         }
-        for (String evidenceVar : queryNode.getEvidenceNames()) {
+        for (String evidenceVar : queryNode.getEvidenceNames()) { // if there is parent which is not in evidences, no line will equals
             if (!evidence.containsKey(evidenceVar))
                 return false;
         }

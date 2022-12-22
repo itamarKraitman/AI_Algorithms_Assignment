@@ -326,17 +326,30 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
             varRelevantLines.add(varCpt.get(0));
             // if var cpt contains evidence var: keep only lines where the outcome of evidence is equal to the evidence outcome in the query outcome
             boolean containsEvidence = false;
-            for (String evidenceVar : evidence.keySet()) {
-                if (varCpt.get(0).containsKey(evidenceVar)) {
-                    containsEvidence = true;
-                    // if the line is valid, add it to the list
-                    for (HashMap<String, String> line : varCpt) {
-                        if (line.get(evidenceVar).equals(queryVarsOutcomesValues.get(evidenceVar))) {
-
-                            varRelevantLines.add(line);
-                        }
+//            for (String evidenceVar : evidence.keySet()) {
+//                if (varCpt.get(0).containsKey(evidenceVar)) {
+//                    containsEvidence = true;
+//                    // if the line is valid, add it to the list
+//                    for (HashMap<String, String> line : varCpt) {
+//                        if (line.get(evidenceVar).equals(queryVarsOutcomesValues.get(evidenceVar))) {
+//
+//                            varRelevantLines.add(line);
+//                        }
+//                    }
+//                }
+//            }
+            for (HashMap<String, String> line : varCpt) {
+                boolean lineIsValid = true;
+                for (String evidenceVar : evidence.keySet()) {
+                    if (varCpt.get(0).containsKey(evidenceVar)) {
+                        containsEvidence = true;
+                        if (!line.get(evidenceVar).equals(queryVarsOutcomesValues.get(evidenceVar)))
+                            lineIsValid = false;
                     }
                 }
+
+                if (lineIsValid)
+                    varRelevantLines.add(line);
             }
             if (varRelevantLines.size() != 2) { // if the cpt of the relevant variable becomes one values, discard it
                 // if node cpt does not contain any evidence, keep all the lines
@@ -372,7 +385,8 @@ public class variableElimination implements Comparator<ArrayList<HashMap<String,
      * @return 1 if first > second, -1 otherwise
      */
     @Override
-    public int compare(ArrayList<HashMap<String, String>> firstCpt, ArrayList<HashMap<String, String>> secondCpt) {
+    public int compare
+    (ArrayList<HashMap<String, String>> firstCpt, ArrayList<HashMap<String, String>> secondCpt) {
         // first sort by size
         if (firstCpt.size() > secondCpt.size()) return 1;
         if (firstCpt.size() < secondCpt.size()) return -1;
